@@ -11,7 +11,6 @@ import torch.optim as optim
 from collections import defaultdict
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
-from dataset import data_loader
 
 
 torch.backends.cudnn.benchmark = True
@@ -25,12 +24,15 @@ device = torch.device("cuda")
 parser = argparse.ArgumentParser(description='Deep Deletion Code')
 
 # General
-parser.add_argument('--length', type=int, default=128, metavar='N',
-                    help='Length of Markov Deletion Code (default: 128)')
+parser.add_argument('--code_length', type=int, default=128, metavar='N',
+                    help='Length of deletion code (default: 128)')
+parser.add_argument('--message_length', type=int, default=64, metavar='N',
+                    help='Length message (default: 64)')
 parser.add_argument('--deletion_prob', type=float, default=0.1, metavar='N',
                     help='Deletion probability of deletion channel (default: 0.1)')
-parser.add_argument('--transition_prob', type=float, default=0.11, metavar='N',
-                    help='Cross transition probability of markov code (default: 0.11)')
+# parser.add_argument('--transition_prob', type=float, default=0.11, metavar='N',
+#                     help='Cross transition probability of markov code (default: 0.11)')
+
 
 # Training args
 parser.add_argument('--batch_size', type=int, default=256, metavar='N',
@@ -49,7 +51,11 @@ parser.add_argument('--test_size', type=int, default=1000, metavar='N',
 parser.add_argument('--dry-run', action='store_true', default=False,
                     help='quickly check a single pass')
 
-# Model args
+# Encoder args
+
+
+# Decoder args
+
 
 
 # Output
@@ -64,9 +70,29 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 
 
-class Net(nn.Module):
+class Encoder(nn.Module):
+    def __init__(self, message_length, code_length):
+        super(Encoder, self).__init__()
+        self.lstm = nn.LSTM(1, 1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = F.max_pool2d(x, 2)
+        x = self.dropout1(x)
+        x = torch.flatten(x, 1)
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = self.dropout2(x)
+        x = self.fc2(x)
+        output = F.log_softmax(x, dim=1)
+        return output
+    
+class Decoder(nn.Module):
     def __init__(self, args):
-        super(Net, self).__init__()
+        super(Decoder, self).__init__()
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
         self.conv2 = nn.Conv2d(32, 64, 3, 1)
         self.dropout1 = nn.Dropout(0.25)
@@ -92,11 +118,9 @@ class Net(nn.Module):
 
 def train(args, train_loader, test_loader, model, optimizer):
     model.train()
-    for step, (x, mask) in enumerate(train_loader):
-        x, mask = x.to(device), mask.to(device)
+    for step, (x, y, deletion_mask, padding_mask) in enumerate(train_loader):
+        x, y, padding_mask = x.to(device), y.to(device), padding_mask.to(device)
         optimizer.zero_grad()
-        print(x)
-        print(mask)
         # output = model(data)
         # loss = F.nll_loss(output, target) 
         # loss.backward()
@@ -134,24 +158,23 @@ def main(args):
     torch.manual_seed(args.seed)
     random.seed(args.seed)
     
-    train_dataset, train_loader = data_loader(
-        dataset_size=args.steps*args.batch_size,
-        length=args.length,
-        deletion_p=args.deletion_prob,
-        transition_p=args.transition_prob,
-        batch_size=args.batch_size)
+    # train_dataset, train_loader = data_loader(
+    #     dataset_size=args.steps*args.batch_size,
+    #     length=args.length,
+    #     deletion_p=args.deletion_prob,
+    #     transition_p=args.transition_prob,
+    #     batch_size=args.batch_size)
     
-    test_dataset, test_loader = data_loader(
-        dataset_size=args.test_size,
-        length=args.length,
-        deletion_p=args.deletion_prob,
-        transition_p=args.transition_prob,
-        batch_size=args.test_size)
+    # test_dataset, test_loader = data_loader(
+    #     dataset_size=args.test_size,
+    #     length=args.length,
+    #     deletion_p=args.deletion_prob,
+    #     transition_p=args.transition_prob,
+    #     batch_size=args.test_size) 
 
-    model = Net(args).to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=args.lr)
+    # model = Net(args).to(device)
+    # optimizer = optim.AdamW(model.parameters(), lr=args.lr)
 
-    train(args, train_loader, test_loader, model, optimizer)
 
 
 if __name__ == '__main__':
