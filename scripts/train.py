@@ -65,7 +65,7 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
 
 
 class Net(nn.Module):
-    def __init__(self):
+    def __init__(self, args):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
         self.conv2 = nn.Conv2d(32, 64, 3, 1)
@@ -156,7 +156,7 @@ def main(args):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    log_dir = "runs"
+    log_dir = "../runs"
     writer_train = SummaryWriter(os.path.join(
         log_dir,
         args.checkpoint_name,
