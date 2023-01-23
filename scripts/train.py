@@ -16,7 +16,9 @@ from torch.optim.lr_scheduler import StepLR
 torch.backends.cudnn.benchmark = True
 
 FORMAT = '[%(levelname)s: %(filename)s: %(lineno)4d]: %(message)s'
-logging.basicConfig(level=logging.INFO, format=FORMAT, stream=sys.stdout)
+file_handler = logging.FileHandler('DDC_train.log', 'w')
+stdout_handler = logging.StreamHandler(stream=sys.stdout)
+logging.basicConfig(level=logging.INFO, format=FORMAT, handlers=[file_handler, stdout_handler])
 logger = logging.getLogger(__name__)
 
 device = torch.device("cuda")
@@ -24,45 +26,54 @@ device = torch.device("cuda")
 parser = argparse.ArgumentParser(description='Deep Deletion Code')
 
 # General
-parser.add_argument('--code_length', type=int, default=128, metavar='N',
+parser.add_argument('--alphabet_size', type=int, default=3,
+                    help='Size of the code alphabet (default: 2)')
+parser.add_argument('--code_length', type=int, default=128,
                     help='Length of deletion code (default: 128)')
-parser.add_argument('--message_length', type=int, default=64, metavar='N',
+parser.add_argument('--message_length', type=int, default=64,
                     help='Length message (default: 64)')
-parser.add_argument('--deletion_prob', type=float, default=0.1, metavar='N',
+parser.add_argument('--deletion_prob', type=float, default=0.1,
                     help='Deletion probability of deletion channel (default: 0.1)')
+
 # parser.add_argument('--transition_prob', type=float, default=0.11, metavar='N',
 #                     help='Cross transition probability of markov code (default: 0.11)')
 
 
 # Training args
-parser.add_argument('--batch_size', type=int, default=256, metavar='N',
+parser.add_argument('--batch_size', type=int, default=32,
                     help='input batch size for training (default: 64)')
-parser.add_argument('--steps', type=int, default=4000, metavar='N',
+parser.add_argument('--steps', type=int, default=4000,
                     help='number of epochs to train (default: 4000)')
-parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
-                    help='learning rate (default: 1.0)')
-parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
+parser.add_argument('--gamma', type=float, default=0.7,
                     help='Learning rate step gamma (default: 0.7)')
+parser.add_argument('--codeword_sample', type=int, default=16,
+                    help='Number of samples for encoder output distribution of codewords (default: 16)')
 
 
 # Testing args
-parser.add_argument('--test_size', type=int, default=1000, metavar='N',
+parser.add_argument('--test_size', type=int, default=1000,
                     help='total samples to test (default: 1000)')
-parser.add_argument('--dry-run', action='store_true', default=False,
+parser.add_argument('--dry_run', action='store_true', default=False,
                     help='quickly check a single pass')
 
 # Encoder args
-
+parser.add_argument('--encoder_lr', type=float, default=0.001, metavar='ELR',
+                    help='learning rate (default: 0.001)')
+# parser.add_argument('--encoder_hidden', type=int, default=128,
+#                     help='hidden layer dimension of encoder (default: 128)')
 
 # Decoder args
+parser.add_argument('--decoder_lr', type=float, default=0.001, metavar='DLR',
+                    help='learning rate (default: 0.001)')
 
 
 
 # Output
-parser.add_argument('--checkpoint_name', type=str, default='DDC code')
-parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+parser.add_argument('--checkpoint_name', type=str, default='DDC code',
+                    help="name of saved checkpoint (default: DCC code)")
+parser.add_argument('--log_interval', type=int, default=10,
                     help='how many batches to wait before logging training status')
-parser.add_argument('--save-model', action='store_true', default=False,
+parser.add_argument('--save_model', action='store_true', default=False,
                     help='For Saving the current Model')
 
 # Misc
@@ -71,34 +82,25 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
 
 
 class Encoder(nn.Module):
-    def __init__(self, message_length, code_length):
+    def __init__(self, args):
         super(Encoder, self).__init__()
-        self.lstm = nn.LSTM(1, 1)
+        self.linear = nn.Conv1d(args.message_length, args.code_length, kernel_size=1, padding=0)
+        self.lstm = nn.LSTM(args.alphabet_size, args.alphabet_size, batch_first=True)
+        self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(x)
-        x = self.conv2(x)
-        x = F.relu(x)
-        x = F.max_pool2d(x, 2)
-        x = self.dropout1(x)
-        x = torch.flatten(x, 1)
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.dropout2(x)
-        x = self.fc2(x)
-        output = F.log_softmax(x, dim=1)
+        # x has size (batch, message length, alphabet size)
+        hidden = self.linear(x)
+        logits, _ = self.lstm(x)
+        # output size is (batch, code length, alphabet size)
+        output = self.softmax(logits) 
         return output
     
 class Decoder(nn.Module):
     def __init__(self, args):
         super(Decoder, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
-        self.conv2 = nn.Conv2d(32, 64, 3, 1)
-        self.dropout1 = nn.Dropout(0.25)
-        self.dropout2 = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(9216, 128)
-        self.fc2 = nn.Linear(128, 10)
+        self.linear = nn.Conv1d(args.message_length, args.code_length, kernel_size=1, padding=0)
+        # self.transformer = nn.Transformer(d_model=code_length)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -116,11 +118,20 @@ class Decoder(nn.Module):
         return output
 
 
-def train(args, train_loader, test_loader, model, optimizer):
-    model.train()
-    for step, (x, y, deletion_mask, padding_mask) in enumerate(train_loader):
-        x, y, padding_mask = x.to(device), y.to(device), padding_mask.to(device)
-        optimizer.zero_grad()
+def train(args, encoder, decoder, E_optimizer, D_optimizer):
+    encoder.train()
+    decoder.train()
+    for step in enumerate(range(args.steps)):
+        E_optimizer.zero_grad()
+        D_optimizer.zero_grad()
+        
+        message_bits = torch.randint(0, args.alphabet_size, (args.batch_size, args.message_length), device=device)
+        message = F.one_hot(message_bits, args.alphabet_size).float()
+        codeword_dist = encoder(message)
+        codeword_samples = [codeword_dist[i].multinomial(num_samples=args.codeword_sample, replacement=True).transpose(0, 1) for i in range(args.batch_size)]
+        codeword_samples = torch.cat(codeword_samples)
+        codeword = F.one_hot(codeword_samples, args.alphabet_size).float()
+        pass
         # output = model(data)
         # loss = F.nll_loss(output, target) 
         # loss.backward()
@@ -157,6 +168,13 @@ def main(args):
     # Training settings
     torch.manual_seed(args.seed)
     random.seed(args.seed)
+    logger.info('training with the following args:')
+    logger.info("=" * 50)
+    for k, v in sorted(list(args.__dict__.items())):
+        logger.info("{}: {}".format(k, v))
+    logger.info("=" * 50)
+    
+    logger.info('Training on {} datapoints with {} steps and batchsize {}'.format(args.steps*args.batch_size, args.steps, args.batch_size))
     
     # train_dataset, train_loader = data_loader(
     #     dataset_size=args.steps*args.batch_size,
@@ -172,8 +190,12 @@ def main(args):
     #     transition_p=args.transition_prob,
     #     batch_size=args.test_size) 
 
-    # model = Net(args).to(device)
-    # optimizer = optim.AdamW(model.parameters(), lr=args.lr)
+    encoder = Encoder(args).to(device)
+    decoder = Decoder(args).to(device)
+    E_optimizer = optim.AdamW(encoder.parameters(), lr=args.encoder_lr)
+    D_optimizer = optim.AdamW(decoder.parameters(), lr=args.decoder_lr)
+    train(args, encoder, decoder, E_optimizer, D_optimizer)
+    
 
 
 
