@@ -15,12 +15,6 @@ from torch.optim.lr_scheduler import StepLR
 
 torch.backends.cudnn.benchmark = True
 
-FORMAT = '[%(levelname)s: %(filename)s: %(lineno)4d]: %(message)s'
-file_handler = logging.FileHandler('DDC_train.log', 'w')
-stdout_handler = logging.StreamHandler(stream=sys.stdout)
-logging.basicConfig(level=logging.INFO, format=FORMAT, handlers=[file_handler, stdout_handler])
-logger = logging.getLogger(__name__)
-
 device = torch.device("cuda")
 
 parser = argparse.ArgumentParser(description='Deep Deletion Code')
@@ -34,6 +28,8 @@ parser.add_argument('--message_length', type=int, default=64,
                     help='Length message (default: 64)')
 parser.add_argument('--deletion_prob', type=float, default=0.1,
                     help='Deletion probability of deletion channel (default: 0.1)')
+parser.add_argument('--log_name', type=str, default="DDC_train",
+                    help='Name of the log file (default: DDC_train)')
 
 # parser.add_argument('--transition_prob', type=float, default=0.11, metavar='N',
 #                     help='Cross transition probability of markov code (default: 0.11)')
@@ -80,6 +76,14 @@ parser.add_argument('--save_model', action='store_true', default=False,
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 
+args = parser.parse_args()
+
+FORMAT = '[%(levelname)s: %(filename)s: %(lineno)4d]: %(message)s'
+file_handler = logging.FileHandler('../runs/logs/{}.log'.format(args.log_name), 'w')
+stdout_handler = logging.StreamHandler(stream=sys.stdout)
+logging.basicConfig(level=logging.INFO, format=FORMAT, handlers=[file_handler, stdout_handler])
+logger = logging.getLogger(__name__)
+
 
 class Encoder(nn.Module):
     def __init__(self, args):
@@ -91,16 +95,23 @@ class Encoder(nn.Module):
     def forward(self, x):
         # x has size (batch, message length, alphabet size)
         hidden = self.linear(x)
-        logits, _ = self.lstm(x)
+        logits, _ = self.lstm(hidden)
         # output size is (batch, code length, alphabet size)
         output = self.softmax(logits) 
         return output
-    
+
+
 class Decoder(nn.Module):
     def __init__(self, args):
         super(Decoder, self).__init__()
-        self.linear = nn.Conv1d(args.message_length, args.code_length, kernel_size=1, padding=0)
-        # self.transformer = nn.Transformer(d_model=code_length)
+        # self.linear = nn.Conv1d(args.message_length, args.code_length, kernel_size=1, padding=0)
+        self.transformer = nn.Transformer(d_model=args.alphabet_size,
+                                          dim_feedforward=4*args.alphabet_size,
+                                          nhead=8,
+                                          num_encoder_layers=6,
+                                          num_decoder_layers=6,
+                                          batch_first=True)
+
 
     def forward(self, x):
         x = self.conv1(x)
@@ -200,7 +211,6 @@ def main(args):
 
 
 if __name__ == '__main__':
-    args = parser.parse_args()
     log_dir = "../runs"
     writer_train = SummaryWriter(os.path.join(
         log_dir,
