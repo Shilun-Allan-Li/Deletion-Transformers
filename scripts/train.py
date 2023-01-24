@@ -61,6 +61,8 @@ parser.add_argument('--encoder_lr', type=float, default=0.001, metavar='ELR',
 # Decoder args
 parser.add_argument('--decoder_lr', type=float, default=0.001, metavar='DLR',
                     help='learning rate (default: 0.001)')
+parser.add_argument('--decoder_hidden', type=int, default=16,
+                    help='decoder hidden size (default: 16)')
 
 
 
@@ -104,13 +106,9 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, args):
         super(Decoder, self).__init__()
-        # self.linear = nn.Conv1d(args.message_length, args.code_length, kernel_size=1, padding=0)
-        self.transformer = nn.Transformer(d_model=args.alphabet_size,
-                                          dim_feedforward=4*args.alphabet_size,
-                                          nhead=8,
-                                          num_encoder_layers=6,
-                                          num_decoder_layers=6,
-                                          batch_first=True)
+        self.encoder = nn.LSTM(args.alphabet_size, args.decoder_hidden, batch_first=True, num_layers=2, bididrectional=True)
+        self.decoder = nn.LSTM(args.alphabet_size+1, args.decoder_hidden, batch_first=True, num_layers=2)
+        
 
 
     def forward(self, x):

@@ -1,0 +1,21 @@
+[INFO: train.py:  182]: training with the following args:
+[INFO: train.py:  183]: ==================================================
+[INFO: train.py:  185]: alphabet_size: 3
+[INFO: train.py:  185]: batch_size: 32
+[INFO: train.py:  185]: checkpoint_name: DDC code
+[INFO: train.py:  185]: code_length: 128
+[INFO: train.py:  185]: codeword_sample: 16
+[INFO: train.py:  185]: decoder_lr: 0.001
+[INFO: train.py:  185]: deletion_prob: 0.1
+[INFO: train.py:  185]: dry_run: False
+[INFO: train.py:  185]: encoder_lr: 0.001
+[INFO: train.py:  185]: gamma: 0.7
+[INFO: train.py:  185]: log_interval: 10
+[INFO: train.py:  185]: log_name: DDC_train
+[INFO: train.py:  185]: message_length: 64
+[INFO: train.py:  185]: save_model: False
+[INFO: train.py:  185]: seed: 1
+[INFO: train.py:  185]: steps: 4000
+[INFO: train.py:  185]: test_size: 1000
+[INFO: train.py:  186]: ==================================================
+[INFO: train.py:  188]: Training on 128000 datapoints with 4000 steps and batchsize 32
