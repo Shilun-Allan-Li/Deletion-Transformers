@@ -42,7 +42,7 @@ parser.add_argument('--steps', type=int, default=4000,
                     help='number of epochs to train (default: 4000)')
 parser.add_argument('--gamma', type=float, default=0.7,
                     help='Learning rate step gamma (default: 0.7)')
-parser.add_argument('--codeword_sample', type=int, default=16,
+parser.add_argument('--num_sample', type=int, default=16,
                     help='Number of samples for encoder output distribution of codewords (default: 16)')
 
 
@@ -61,8 +61,8 @@ parser.add_argument('--encoder_lr', type=float, default=0.001, metavar='ELR',
 # Decoder args
 parser.add_argument('--decoder_lr', type=float, default=0.001, metavar='DLR',
                     help='learning rate (default: 0.001)')
-parser.add_argument('--decoder_hidden', type=int, default=16,
-                    help='decoder hidden size (default: 16)')
+parser.add_argument('--decoder_hidden', type=int, default=8,
+                    help='decoder hidden size (default: 8)')
 
 
 
@@ -106,25 +106,24 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, args):
         super(Decoder, self).__init__()
-        self.encoder = nn.LSTM(args.alphabet_size, args.decoder_hidden, batch_first=True, num_layers=2, bididrectional=True)
-        self.decoder = nn.LSTM(args.alphabet_size+1, args.decoder_hidden, batch_first=True, num_layers=2)
-        
+        self.encoder = nn.GRU(args.alphabet_size+1, args.decoder_hidden)
+        self.decoder = nn.GRU(args.alphabet_size+1, args.decoder_hidden)
+        self.out = nn.Linear(args.decoder_hidden, args.alphabet_size+1)
+        self.softmax = nn.LogSoftmax(dim=1)
 
 
-    def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(x)
-        x = self.conv2(x)
-        x = F.relu(x)
-        x = F.max_pool2d(x, 2)
-        x = self.dropout1(x)
-        x = torch.flatten(x, 1)
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.dropout2(x)
-        x = self.fc2(x)
-        output = F.log_softmax(x, dim=1)
-        return output
+    def forward(self, x, src_len):
+        # x is batch first with shape (padded sequence length, batch size, alphabet size+1)
+        # idxs = torch.argsort(src_len, descending=True)
+        # x = x[:,idxs]
+        # src_len = src_len[idxs]
+        packed_x = nn.utils.rnn.pack_padded_sequence(x, src_len.to('cpu'), enforce_sorted=False)
+        packed_x_features, encoder_hidden = self.encoder(packed_x)
+        encoder_output, _ = nn.utils.rnn.pad_packed_sequence(packed_x_features, total_length=args.code_length)
+        output, hidden = self.decoder(x, encoder_hidden)
+        pass
+        output = self.softmax(self.out(output))
+        return 
 
 
 def train(args, encoder, decoder, E_optimizer, D_optimizer):
@@ -137,10 +136,16 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         message_bits = torch.randint(0, args.alphabet_size, (args.batch_size, args.message_length), device=device)
         message = F.one_hot(message_bits, args.alphabet_size).float()
         codeword_dist = encoder(message)
-        codeword_samples = [codeword_dist[i].multinomial(num_samples=args.codeword_sample, replacement=True).transpose(0, 1) for i in range(args.batch_size)]
+        codeword_samples = [codeword_dist[i].multinomial(num_samples=args.num_sample, replacement=True).transpose(0, 1) for i in range(args.batch_size)]
         codeword_samples = torch.cat(codeword_samples)
-        codeword = F.one_hot(codeword_samples, args.alphabet_size).float()
-        pass
+        # codeword_samples is of size (batchsize * num_sample, codeword length)
+        deletion_mask = torch.rand((args.batch_size * args.num_sample, args.code_length), device=device) > args.deletion_prob
+        deleted_samples_seq = [codeword_samples[i][deletion_mask[i]] for i in range(deletion_mask.size(0))]
+        src_len = torch.tensor([len(deleted_samples_seq[i]) for i in range(deletion_mask.size(0))])
+        pad_token = args.alphabet_size
+        deleted_samples = nn.utils.rnn.pad_sequence(deleted_samples_seq, padding_value=pad_token)
+        deleted_x = F.one_hot(deleted_samples, args.alphabet_size+1).float()
+        decoder(deleted_x, src_len)
         # output = model(data)
         # loss = F.nll_loss(output, target) 
         # loss.backward()
