@@ -7,10 +7,18 @@ from models import *
 import random
 
 
+"""
+The input to the decoder is tensor of shape (batch, code_length) and Long type on cuda
+The output of the decoder should be a tensor of shape (batch, message_length)
+"""
+
+device = torch.device("cuda")
+
 class Seq2SeqDecoder(nn.Module):
     def __init__(self, args):
-        super(Decoder, self).__init__()
+        super(Seq2SeqDecoder, self).__init__()
         self.vocab_size = args.alphabet_size+2 # with <pad> and <bos>
+        self.pad_token = args.alphabet_size
         self.bos_token = args.alphabet_size+1
         self.message_length = args.message_length
         self.encoder = SeqEncoder(input_dim=self.vocab_size,
@@ -22,12 +30,17 @@ class Seq2SeqDecoder(nn.Module):
                                   emb_dim=self.vocab_size,
                                   enc_hid_dim=args.decoder_e_hidden,
                                   dec_hid_dim=args.decoder_d_hidden)
-
+    def create_mask(self, src):
+        mask = (src != self.pad_token).permute(1, 0)
+        return mask
+    
+    
     def forward(self, src, src_len, trg, teacher_forcing_ratio):
         # x is of shape (codeword length, N, dictionary_size)
         batch_size = src.shape[1]
         outputs = torch.zeros(self.message_length, batch_size, self.vocab_size, device=device)
         encoder_outputs, hidden = self.encoder(src, src_len)
+
         # first input to the decoder is the <sos> tokens
         input = torch.tensor([self.bos_token]*batch_size, device=device)
 

@@ -13,6 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
 from channels import *
 from encoder_models import *
+from decoder_models import *
 
 
 torch.backends.cudnn.benchmark = True
@@ -22,7 +23,7 @@ device = torch.device("cuda")
 parser = argparse.ArgumentParser(description='Deep Deletion Code')
 
 # General
-parser.add_argument('--alphabet_size', type=int, default=3,
+parser.add_argument('--alphabet_size', type=int, default=2,
                     help='Size of the code alphabet (default: 2)')
 parser.add_argument('--code_length', type=int, default=128,
                     help='Length of deletion code (default: 128)')
@@ -65,7 +66,7 @@ parser.add_argument('--train_encoder', type=bool, default=False,
 #                     help='hidden layer dimension of encoder (default: 128)')
 
 # Decoder args
-parser.add_argument('--decoder_lr', type=float, default=0.001, metavar='DLR',
+parser.add_argument('--decoder_lr', type=float, default=1e-4, metavar='DLR',
                     help='learning rate (default: 0.001)')
 parser.add_argument('--decoder_e_hidden', type=int, default=8,
                     help='decoder hidden size (default: 8)')
@@ -107,7 +108,7 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
     if args.train_encoder:
         encoder.train()
     decoder.train()
-    for step in enumerate(range(args.steps)):
+    for step in range(1, args.steps+1):
         if args.train_encoder:
             E_optimizer.zero_grad()
         D_optimizer.zero_grad()
@@ -124,26 +125,36 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
 
         # codeword_samples is of size (batchsize * num_sample, codeword length)
         x, src_len = BSCChannel(codeword_samples, args.channel_prob)
+        
+        trg = message.transpose(0, 1)
+        output = decoder(src=x.transpose(0, 1), 
+                         src_len=src_len,
+                         trg=trg,
+                         teacher_forcing_ratio=0)
 
-        decoder(src=x.transpose(0, 1),
-                src_len=src_len,
-                trg=message.transpose(0, 1),
-                teacher_forcing_ratio=0.5)
-
-        loss = criterion(output, trg)
+        if step % 100 == 0:
+            pass
+        predictions = output.argmax(-1)
+        BLER = torch.mean(torch.all(predictions == trg, dim=0).float())
+        BER = torch.mean((predictions == trg).float())
+        
+        output_dim = output.shape[-1]
+        output = output.view(-1, output_dim)
+        
+        loss = criterion(output, trg.contiguous().view(-1))
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+        torch.nn.utils.clip_grad_norm_(decoder.parameters(), args.clip)
 
         if args.train_encoder:
             E_optimizer.step()
         D_optimizer.step()
-
-        logger.info("[train] Step: {}/{} ()\tLoss: {:.6f}".format(step, args.steps, step/args.steps, loss.item()))
-
-        # if batch_idx % args.log_interval == 0:
-        #     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-        #         epoch, batch_idx * len(data), len(train_loader.dataset),
-        #         100. * batch_idx / len(train_loader), loss.item()))
+        
+        writer.add_scalar('train/Loss', loss.item(), step)
+        writer.add_scalar('train/BLER', BLER, step)
+        writer.add_scalar('train/BER', BER, step)
+        
+        logger.info("[train] Step: {}/{} ({:.0f}%)\tLoss: {:.6f}\t BER: {}\t BLER: {}"
+                    .format(step, args.steps, step/args.steps*100, loss.item(), BER, BLER))
 
 
 
@@ -201,26 +212,22 @@ def main(args):
                 nn.init.constant_(param.data, 0)
 
     encoder = RandomSystematicLinearEncoding(args).to(device)
-    decoder = Decoder(args).to(device)
-    decoder.apply(init_weights)
+    decoder = Seq2SeqDecoder(args).to(device)
+    # decoder.apply(init_weights)
     logger.info("The encoder has {} trainable parameters.".format(count_parameters(encoder)))
     logger.info("The decoder has {} trainable parameters.".format(count_parameters(decoder)))
     if args.train_encoder:
-        E_optimizer = optim.AdamW(encoder.parameters(), lr=args.encoder_lr)
+        E_optimizer = optim.Adam(encoder.parameters(), lr=args.encoder_lr)
+    else:
+        E_optimizer = None
     D_optimizer = optim.AdamW(decoder.parameters(), lr=args.decoder_lr)
     train(args, encoder, decoder, E_optimizer, D_optimizer)
 
 
 if __name__ == '__main__':
     log_dir = "../runs"
-    writer_train = SummaryWriter(os.path.join(
+    writer = SummaryWriter(os.path.join(
         log_dir,
-        args.checkpoint_name,
-        "train"
-    ))
-    writer_val = SummaryWriter(os.path.join(
-        log_dir,
-        args.checkpoint_name,
-        "val"
+        args.checkpoint_name
     ))
     main(args)

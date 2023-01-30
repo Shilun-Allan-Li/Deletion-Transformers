@@ -4,10 +4,16 @@ import torch
 from torch import nn, Tensor
 import torch.nn.functional as F
 
+"""
+The input to the encoder is tensor of shape (batch, message_length) and Long type on cuda
+The output of the encoder should be a tensor of shape (batch, code_length)
+"""
+
+device = torch.device("cuda")
 
 class LSTMEncoder(nn.Module):
     def __init__(self, args):
-        super(Encoder, self).__init__()
+        super(LSTMEncoder, self).__init__()
         self.linear = nn.Conv1d(args.message_length, args.code_length, kernel_size=1, padding=0)
         self.lstm = nn.LSTM(args.alphabet_size, args.alphabet_size, batch_first=True)
         self.softmax = nn.Softmax(dim=-1)
@@ -24,19 +30,22 @@ class LSTMEncoder(nn.Module):
 class RandomSystematicLinearEncoding(nn.Module):
     def __init__(self, args):
         super().__init__()
-        matrix = torch.rand((args.message_length, args.code_length - args.message_length)) > 0.5
+        matrix = torch.randint(0, args.alphabet_size, (args.message_length, args.code_length - args.message_length)).float()
         self.register_buffer('matrix', matrix)
+        self.alphabet_size = args.alphabet_size
 
     def forward(self, x):
-        return torch.cat(x, x @ self.matrix, dim=-1)
+        parity_bits = torch.remainder(x.float() @  self.matrix, self.alphabet_size)
+        return torch.cat([x, parity_bits], dim=1).long()
 
 
 class RandomLinearEncoding(nn.Module):
     def __init__(self, args):
         super().__init__()
-        matrix = torch.rand((args.message_length, args.code_length)) > 0.5
+        matrix = torch.randint(0, args.alphabet_size, (args.message_length, args.code_length)).float()
         self.register_buffer('matrix', matrix)
+        self.alphabet_size = args.alphabet_size
 
     def forward(self, x):
-        return x @ self.matrix
+        return (x.float() @ self.matrix).long()
 

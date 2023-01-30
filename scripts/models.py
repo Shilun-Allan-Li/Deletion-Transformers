@@ -68,12 +68,11 @@ class SeqEncoder(nn.Module):
         
         self.fc = nn.Linear(enc_hid_dim * 2, dec_hid_dim)
         
-        self.dropout = nn.Dropout(dropout)
         
     def forward(self, src, src_len):
         #src = [src len, batch size]
         #src_len = [batch size]
-        embedded = self.dropout(self.embedding(src))
+        embedded = self.embedding(src)
         #embedded = [src len, batch size, emb dim]
                 
         #need to explicitly put lengths on cpu!
