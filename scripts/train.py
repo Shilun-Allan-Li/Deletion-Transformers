@@ -39,10 +39,10 @@ parser.add_argument('--log_name', type=str, default="DDC_train",
 
 
 # Training args
-parser.add_argument('--batch_size', type=int, default=32,
+parser.add_argument('--batch_size', type=int, default=256,
                     help='input batch size for training (default: 64)')
-parser.add_argument('--steps', type=int, default=4000,
-                    help='number of epochs to train (default: 4000)')
+parser.add_argument('--steps', type=int, default=40000,
+                    help='number of epochs to train (default: 40000)')
 parser.add_argument('--gamma', type=float, default=0.7,
                     help='Learning rate step gamma (default: 0.7)')
 parser.add_argument('--num_sample', type=int, default=16,
@@ -66,7 +66,7 @@ parser.add_argument('--train_encoder', type=bool, default=False,
 #                     help='hidden layer dimension of encoder (default: 128)')
 
 # Decoder args
-parser.add_argument('--decoder_lr', type=float, default=1e-4, metavar='DLR',
+parser.add_argument('--decoder_lr', type=float, default=1e-3, metavar='DLR',
                     help='learning rate (default: 0.001)')
 parser.add_argument('--decoder_e_hidden', type=int, default=8,
                     help='decoder hidden size (default: 8)')
@@ -128,18 +128,20 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         
         trg = message.transpose(0, 1)
         output = decoder(src=x.transpose(0, 1), 
-                         src_len=src_len,
-                         trg=trg,
-                         teacher_forcing_ratio=0)
+                          src_len=src_len,
+                          trg=trg,
+                          teacher_forcing_ratio=0)
+        # output = decoder(x)
 
         if step % 100 == 0:
             pass
         predictions = output.argmax(-1)
+        
         BLER = torch.mean(torch.all(predictions == trg, dim=0).float())
         BER = torch.mean((predictions == trg).float())
         
         output_dim = output.shape[-1]
-        output = output.view(-1, output_dim)
+        output = output.contiguous().view(-1, output_dim)
         
         loss = criterion(output, trg.contiguous().view(-1))
         loss.backward()
@@ -213,6 +215,7 @@ def main(args):
 
     encoder = RandomSystematicLinearEncoding(args).to(device)
     decoder = Seq2SeqDecoder(args).to(device)
+    # decoder = testDecoder(args).to(device)
     # decoder.apply(init_weights)
     logger.info("The encoder has {} trainable parameters.".format(count_parameters(encoder)))
     logger.info("The decoder has {} trainable parameters.".format(count_parameters(decoder)))
@@ -220,7 +223,7 @@ def main(args):
         E_optimizer = optim.Adam(encoder.parameters(), lr=args.encoder_lr)
     else:
         E_optimizer = None
-    D_optimizer = optim.AdamW(decoder.parameters(), lr=args.decoder_lr)
+    D_optimizer = optim.Adam(decoder.parameters(), lr=args.decoder_lr)
     train(args, encoder, decoder, E_optimizer, D_optimizer)
 
 

@@ -17,6 +17,7 @@ class LSTMEncoder(nn.Module):
         self.linear = nn.Conv1d(args.message_length, args.code_length, kernel_size=1, padding=0)
         self.lstm = nn.LSTM(args.alphabet_size, args.alphabet_size, batch_first=True)
         self.softmax = nn.Softmax(dim=-1)
+        
 
     def forward(self, x):
         # x has size (batch, message length, alphabet size)
@@ -29,7 +30,7 @@ class LSTMEncoder(nn.Module):
 
 class RandomSystematicLinearEncoding(nn.Module):
     def __init__(self, args):
-        super().__init__()
+        super(RandomSystematicLinearEncoding, self).__init__()
         matrix = torch.randint(0, args.alphabet_size, (args.message_length, args.code_length - args.message_length)).float()
         self.register_buffer('matrix', matrix)
         self.alphabet_size = args.alphabet_size
@@ -41,7 +42,7 @@ class RandomSystematicLinearEncoding(nn.Module):
 
 class RandomLinearEncoding(nn.Module):
     def __init__(self, args):
-        super().__init__()
+        super(RandomLinearEncoding, self).__init__()
         matrix = torch.randint(0, args.alphabet_size, (args.message_length, args.code_length)).float()
         self.register_buffer('matrix', matrix)
         self.alphabet_size = args.alphabet_size

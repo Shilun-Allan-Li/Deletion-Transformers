@@ -69,6 +69,7 @@ class SeqEncoder(nn.Module):
         self.fc = nn.Linear(enc_hid_dim * 2, dec_hid_dim)
         
         
+        
     def forward(self, src, src_len):
         #src = [src len, batch size]
         #src_len = [batch size]
@@ -97,7 +98,9 @@ class SeqEncoder(nn.Module):
         
         #initial decoder hidden is final hidden state of the forwards and backwards 
         #  encoder RNNs fed through a linear layer
-        hidden = torch.tanh(self.fc(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1)))
+        features = self.fc(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1))
+        
+        hidden = torch.tanh(features)
         #outputs = [src len, batch size, enc hid dim * 2]
         #hidden = [batch size, dec hid dim]
         return outputs, hidden
@@ -129,13 +132,15 @@ class Attention(nn.Module):
 
 
 class SeqDecoder(nn.Module):
-    def __init__(self, output_dim, emb_dim, enc_hid_dim, dec_hid_dim):
+    def __init__(self, input_dim, output_dim, emb_dim, enc_hid_dim, dec_hid_dim):
         super().__init__()
         self.output_dim = output_dim
         self.attention = Attention(enc_hid_dim, dec_hid_dim)
-        self.embedding = nn.Embedding(output_dim, emb_dim)
+        self.embedding = nn.Embedding(input_dim, emb_dim)
         self.rnn = nn.GRU((enc_hid_dim * 2) + emb_dim, dec_hid_dim)
         self.fc_out = nn.Linear((enc_hid_dim * 2) + dec_hid_dim + emb_dim, output_dim)
+        self.layer_norm_rnn = nn.LayerNorm((1, (enc_hid_dim * 2) + emb_dim))
+        self.layer_norm_fc = nn.LayerNorm((enc_hid_dim * 2) + dec_hid_dim + emb_dim)
         
     def forward(self, input, hidden, encoder_outputs, mask):
              
@@ -175,6 +180,10 @@ class SeqDecoder(nn.Module):
         rnn_input = torch.cat((embedded, weighted), dim = 2)
         
         #rnn_input = [1, batch size, (enc hid dim * 2) + emb dim]
+        
+        rnn_input = self.layer_norm_rnn(rnn_input.transpose(0, 1)).transpose(0, 1)
+        
+        #rnn_input = [1, batch size, (enc hid dim * 2) + emb dim]
             
         output, hidden = self.rnn(rnn_input, hidden.unsqueeze(0))
         
@@ -191,7 +200,11 @@ class SeqDecoder(nn.Module):
         output = output.squeeze(0)
         weighted = weighted.squeeze(0)
         
-        prediction = self.fc_out(torch.cat((output, weighted, embedded), dim = 1))
+        
+        features = self.layer_norm_fc(torch.cat((output, weighted, embedded), dim = 1))
+        # features = torch.cat((output, weighted, embedded), dim = 1)
+                            
+        prediction = self.fc_out(features)
         
         #prediction = [batch size, output dim]
         

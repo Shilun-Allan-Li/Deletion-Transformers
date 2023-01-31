@@ -26,7 +26,8 @@ class Seq2SeqDecoder(nn.Module):
                                   enc_hid_dim=args.decoder_e_hidden,
                                   dec_hid_dim=args.decoder_d_hidden)
 
-        self.decoder = SeqDecoder(output_dim=self.vocab_size,
+        self.decoder = SeqDecoder(input_dim=self.vocab_size,
+                                  output_dim=args.alphabet_size,
                                   emb_dim=self.vocab_size,
                                   enc_hid_dim=args.decoder_e_hidden,
                                   dec_hid_dim=args.decoder_d_hidden)
@@ -38,7 +39,7 @@ class Seq2SeqDecoder(nn.Module):
     def forward(self, src, src_len, trg, teacher_forcing_ratio):
         # x is of shape (codeword length, N, dictionary_size)
         batch_size = src.shape[1]
-        outputs = torch.zeros(self.message_length, batch_size, self.vocab_size, device=device)
+        outputs = torch.zeros(self.message_length, batch_size, self.decoder.output_dim, device=device)
         encoder_outputs, hidden = self.encoder(src, src_len)
 
         # first input to the decoder is the <sos> tokens
@@ -52,6 +53,7 @@ class Seq2SeqDecoder(nn.Module):
             # insert input token embedding, previous hidden state, all encoder hidden states
             #  and mask
             # receive output tensor (predictions) and new hidden state
+
             output, hidden, _ = self.decoder(input, hidden, encoder_outputs, mask)
 
             # place predictions in a tensor holding predictions for each token
@@ -72,7 +74,7 @@ class Seq2SeqDecoder(nn.Module):
 
 class SimpleDecoder(nn.Module):
     def __init__(self, args):
-        super(Decoder, self).__init__()
+        super(SimpleDecoder, self).__init__()
         self.encoder = nn.GRU(args.alphabet_size+1, args.decoder_hidden)
         self.decoder = nn.GRU(args.alphabet_size+1, args.decoder_hidden)
         self.out = nn.Linear(args.decoder_hidden, args.alphabet_size+1)
@@ -91,3 +93,17 @@ class SimpleDecoder(nn.Module):
         pass
         output = self.softmax(self.out(output))
         return
+    
+class testDecoder(nn.Module):
+    def __init__(self, args):
+        super().__init__()
+        self.emb = nn.Embedding(2, 2)
+        # self.conv = nn.Conv1d(2, 2, kernel_size=1, padding=0)
+        self.fc = nn.Linear(128, 64)
+        
+    def forward(self, x):
+        embedding = self.emb(x)
+        out = self.fc(embedding.transpose(1, 2)).transpose(1, 2)
+        return out.transpose(0, 1)
+        # out = self.conv(embedding.transpose(1, 2))
+        # return out.transpose(1, 2)
