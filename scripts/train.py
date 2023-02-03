@@ -28,7 +28,7 @@ parser.add_argument('--alphabet_size', type=int, default=2,
                     help='Size of the code alphabet (default: 2)')
 parser.add_argument('--code_length', type=int, default=128,
                     help='Length of deletion code (default: 128)')
-parser.add_argument('--message_length', type=int, default=64,
+parser.add_argument('--message_length', type=int, default=32,
                     help='Length message (default: 64)')
 parser.add_argument('--channel_prob', type=float, default=0.1,
                     help='Probability of channel (default: 0.1)')
@@ -67,8 +67,8 @@ parser.add_argument('--train_encoder', type=bool, default=False,
 #                     help='hidden layer dimension of encoder (default: 128)')
 
 # Decoder args
-parser.add_argument('--decoder_lr', type=float, default=1e-3, metavar='DLR',
-                    help='learning rate (default: 0.001)')
+parser.add_argument('--decoder_lr', type=float, default=1e-2, metavar='DLR',
+                    help='learning rate (default: 1e-3)')
 parser.add_argument('--decoder_e_hidden', type=int, default=8,
                     help='decoder hidden size (default: 8)')
 parser.add_argument('--decoder_d_hidden', type=int, default=16,
@@ -92,7 +92,10 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
 
 args = parser.parse_args()
 
-log_dir = "../runs/{}".format(datetime.now().strftime("%m%d %H-%M-%S"))
+force_log_name = "32 repete 4 times"
+# force_log_name = None
+
+log_dir = "../runs/{}".format(force_log_name if force_log_name else datetime.now().strftime("%m%d %H-%M-%S"))
 os.makedirs(log_dir, exist_ok=True)
 
 FORMAT = '[%(levelname)s: %(filename)s: %(lineno)4d]: %(message)s'
@@ -139,7 +142,8 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         message = torch.randint(0, args.alphabet_size, (args.batch_size, args.message_length), device=device)
 
         ### for traditional encoder with bool output
-        codeword_samples = encoder(message)
+        # codeword_samples = encoder(message)
+        codeword_samples = torch.cat([message, message, message, message], dim=1)
 
         ### for normal encoder with float output
         # codeword_dist = encoder(message)
@@ -313,8 +317,9 @@ def main(args):
                 nn.init.constant_(param.data, 0)
 
     encoder = RandomSystematicLinearEncoding(args).to(device)
+    # encoder = RandomLinearEncoding(args).to(device)
     decoder = Seq2SeqTransformer(args).to(device)
-    # decoder = testDecoder(args).to(device)
+    # decoder = testDecoder2(args).to(device)
     # decoder.apply(init_weights)
     for p in decoder.parameters():
         if p.dim() > 1:

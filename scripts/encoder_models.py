@@ -31,7 +31,12 @@ class LSTMEncoder(nn.Module):
 class RandomSystematicLinearEncoding(nn.Module):
     def __init__(self, args):
         super(RandomSystematicLinearEncoding, self).__init__()
-        matrix = torch.randint(0, args.alphabet_size, (args.message_length, args.code_length - args.message_length)).float()
+        # matrix = torch.randint(0, args.alphabet_size, (args.message_length, args.code_length - args.message_length)).float()
+        # matrix = torch.zeros((args.message_length, args.code_length - args.message_length))
+        sample = torch.rand((args.message_length, args.code_length - args.message_length)).topk(2, dim=1).indices
+        mask = torch.zeros((args.message_length, args.code_length - args.message_length))
+        matrix = mask.scatter_(dim=1, index=sample, value=1)
+        matrix = matrix.float()
         self.register_buffer('matrix', matrix)
         self.alphabet_size = args.alphabet_size
 
@@ -43,7 +48,15 @@ class RandomSystematicLinearEncoding(nn.Module):
 class RandomLinearEncoding(nn.Module):
     def __init__(self, args):
         super(RandomLinearEncoding, self).__init__()
-        matrix = torch.randint(0, args.alphabet_size, (args.message_length, args.code_length)).float()
+        # matrix = torch.randint(0, args.alphabet_size, (args.message_length, args.code_length)).float()
+        # matrix = (torch.rand((args.message_length, args.code_length)) < 0.02).float()
+        sample = torch.rand((args.message_length, args.code_length-18)).topk(3, dim=1).indices
+        mask = torch.zeros((args.message_length, args.code_length-18))
+        matrix = mask.scatter_(dim=1, index=sample, value=1)
+        m = torch.diag(torch.ones(args.message_length-1), diagonal=1) + torch.diag(torch.ones(args.message_length)) + torch.diag(torch.ones(args.message_length-1), diagonal=-1)
+        m = torch.cat([torch.tensor([[1] + [0]*15]), m, torch.tensor([[0]*15 + [1]])], dim=0).transpose(0, 1)
+        matrix = torch.cat([m, matrix], dim=1)
+        matrix = matrix.float()
         self.register_buffer('matrix', matrix)
         self.alphabet_size = args.alphabet_size
 

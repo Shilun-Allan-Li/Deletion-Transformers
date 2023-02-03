@@ -14,6 +14,8 @@ The output of the decoder should be a tensor of shape (batch, message_length)
 
 device = torch.device("cuda")
 
+def mod_relu(x):
+    return torch.remainder(F.relu(x), 2) - 1
 
 class Seq2SeqTransformer(nn.Module):
     def __init__(self, args):
@@ -30,9 +32,10 @@ class Seq2SeqTransformer(nn.Module):
         
         self.transformer = nn.Transformer(d_model=emb_size,
                                           nhead=nhead,
+                                          activation='relu',
                                           num_encoder_layers=4,
                                           num_decoder_layers=4,
-                                          dim_feedforward=32,
+                                          dim_feedforward=8,
                                           dropout=dropout)
         self.generator = nn.Linear(emb_size, tgt_vocab_size)
         self.src_tok_emb = nn.Embedding(src_vocab_size, emb_size)
@@ -148,11 +151,32 @@ class testDecoder(nn.Module):
         super().__init__()
         self.emb = nn.Embedding(2, 2)
         # self.conv = nn.Conv1d(2, 2, kernel_size=1, padding=0)
-        self.fc = nn.Linear(128, 64)
+        self.fc = nn.Linear(32, 16)
+        self.fc2 = nn.Linear(48, 16)
+        
+    def forward(self, x, encoder):
+        x = encoder.matrix
+        embedding = self.emb(x)
+        out = self.fc(embedding.transpose(1, 2))
+        out = torch.sin(out)
+        # out = self.fc2(out)
+        out = out.transpose(1, 2)
+        return out.transpose(0, 1)
+        # out = self.conv(embedding.transpose(1, 2))
+        # return out.transpose(1, 2)
+        
+class testDecoder2(nn.Module):
+    def __init__(self, args):
+        super().__init__()
+        self.fc = nn.Linear(32, 16)
+        # self.fc2 = nn.Linear(48, 16)
         
     def forward(self, x):
-        embedding = self.emb(x)
-        out = self.fc(embedding.transpose(1, 2)).transpose(1, 2)
+        embedding = F.one_hot(x).float()
+        out = self.fc(embedding.transpose(1, 2))
+        out = torch.sin(out)
+        # out = self.fc2(out)
+        out = out.transpose(1, 2)
         return out.transpose(0, 1)
         # out = self.conv(embedding.transpose(1, 2))
         # return out.transpose(1, 2)
