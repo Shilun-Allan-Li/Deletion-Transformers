@@ -62,4 +62,13 @@ class RandomLinearEncoding(nn.Module):
 
     def forward(self, x):
         return (x.float() @ self.matrix).long()
+    
+class RepetitionCode(nn.Module):
+    def __init__(self, args):
+        super(RepetitionCode, self).__init__()
+        assert args.code_length % args.message_length == 0
+        self.repeat = args.code_length // args.message_length
+
+    def forward(self, x):
+        return torch.cat([x]*self.repeat, dim=1)
 

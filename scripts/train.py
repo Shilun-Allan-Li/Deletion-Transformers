@@ -3,6 +3,7 @@ from datetime import datetime
 import logging
 import os
 import sys
+import numpy as np
 import torch
 import argparse
 import random
@@ -15,6 +16,7 @@ from torch.optim.lr_scheduler import StepLR
 from channels import *
 from encoder_models import *
 from decoder_models import *
+import shutil
 
 
 torch.backends.cudnn.benchmark = True
@@ -23,7 +25,14 @@ device = torch.device("cuda")
 
 parser = argparse.ArgumentParser(description='Deep Deletion Code')
 
+checkpoint_path = None
+# checkpoint_path = '../runs/32 repete 4 times/checkpoint.pt'
+
 # General
+parser.add_argument('--log_name', type=str, default="32 repete 4 times",
+                    help='Name of the log folder (default: current time)')
+parser.add_argument('--checkpoint_load_path', type=str, default=checkpoint_path,
+                    help='checkpoint path to load (default: None)')
 parser.add_argument('--alphabet_size', type=int, default=2,
                     help='Size of the code alphabet (default: 2)')
 parser.add_argument('--code_length', type=int, default=128,
@@ -32,17 +41,12 @@ parser.add_argument('--message_length', type=int, default=32,
                     help='Length message (default: 64)')
 parser.add_argument('--channel_prob', type=float, default=0.1,
                     help='Probability of channel (default: 0.1)')
-parser.add_argument('--log_name', type=str, default="DDC_train",
-                    help='Name of the log file (default: DDC_train)')
-
-# parser.add_argument('--transition_prob', type=float, default=0.11, metavar='N',
-#                     help='Cross transition probability of markov code (default: 0.11)')
 
 
 # Training args
 parser.add_argument('--batch_size', type=int, default=256,
                     help='input batch size for training (default: 64)')
-parser.add_argument('--steps', type=int, default=400000,
+parser.add_argument('--steps', type=int, default=40000,
                     help='number of epochs to train (default: 40000)')
 parser.add_argument('--gamma', type=float, default=0.7,
                     help='Learning rate step gamma (default: 0.7)')
@@ -51,12 +55,11 @@ parser.add_argument('--num_sample', type=int, default=16,
 parser.add_argument('--clip', type=float, default=1,
                     help='training grad norm clip value (default: 1.0)')
 
-
 # Testing args
-parser.add_argument('--test_size', type=int, default=1000,
-                    help='total samples to test (default: 1000)')
-parser.add_argument('--dry_run', action='store_true', default=False,
-                    help='quickly check a single pass')
+parser.add_argument('--eval_size', type=int, default=2048,
+                    help='total samples to test (default: 1024)')
+parser.add_argument('--eval_every', type=int, default=500,
+                    help='eval every n steps (default: 1000)')
 
 # Encoder args
 parser.add_argument('--encoder_lr', type=float, default=0.001, metavar='ELR',
@@ -76,14 +79,8 @@ parser.add_argument('--decoder_d_hidden', type=int, default=16,
 parser.add_argument('--decoder_forward', type=int, default=32,
                     help='decoder feed forward size (default: 32)')
 
-
-
 # Output
-# parser.add_argument('--checkpoint_name', type=str, default='DDC code',
-#                     help="name of saved checkpoint (default: DCC code)")
-parser.add_argument('--log_interval', type=int, default=10,
-                    help='how many batches to wait before logging training status')
-parser.add_argument('--save_model', action='store_true', default=False,
+parser.add_argument('--save_model', action='store_true', default=True,
                     help='For Saving the current Model')
 
 # Misc
@@ -92,14 +89,18 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
 
 args = parser.parse_args()
 
-force_log_name = "32 repete 4 times"
-# force_log_name = None
-
-log_dir = "../runs/{}".format(force_log_name if force_log_name else datetime.now().strftime("%m%d %H-%M-%S"))
+log_dir = "../runs/{}".format(args.log_name if args.log_name else datetime.now().strftime("%m%d %H-%M-%S"))
+if os.path.exists(os.path.join(log_dir, "tensorboard")):
+    s = str(input("log directory already exists. Continue? [Y/N]"))
+    s = s.lower()
+    if s != "y" and s != "yes":
+        os._exit(0)
+    shutil.rmtree(os.path.join(log_dir, "tensorboard"))
+    
 os.makedirs(log_dir, exist_ok=True)
 
 FORMAT = '[%(levelname)s: %(filename)s: %(lineno)4d]: %(message)s'
-file_handler = logging.FileHandler('{}/{}.log'.format(log_dir, args.log_name), 'w')
+file_handler = logging.FileHandler('{}/log.txt'.format(log_dir), 'w')
 stdout_handler = logging.StreamHandler(stream=sys.stdout)
 logging.basicConfig(level=logging.INFO, format=FORMAT, handlers=[file_handler, stdout_handler], force=True)
 logger = logging.getLogger(__name__)
@@ -118,8 +119,13 @@ def generate_square_subsequent_mask(sz):
 def create_mask(src, tgt, pad_token):
     src_seq_len = src.shape[0]
     tgt_seq_len = tgt.shape[0]
-
-    tgt_mask = generate_square_subsequent_mask(tgt_seq_len)
+    
+    # use when target bits are independent
+    tgt_mask = generate_square_subsequent_mask(tgt_seq_len) + generate_square_subsequent_mask(tgt_seq_len).transpose(0, 1)
+    
+    # use when target bits depend on the former bits
+    # tgt_mask = generate_square_subsequent_mask(tgt_seq_len)
+    
     src_mask = torch.zeros((src_seq_len, src_seq_len),device=device).type(torch.bool)
 
     src_padding_mask = (src == pad_token).transpose(0, 1)
@@ -130,6 +136,7 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
     pad_token = args.alphabet_size
     bos_token = args.alphabet_size + 1
     criterion = nn.CrossEntropyLoss(ignore_index=pad_token)
+    best_BER = 1
 
     if args.train_encoder:
         encoder.train()
@@ -142,8 +149,7 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         message = torch.randint(0, args.alphabet_size, (args.batch_size, args.message_length), device=device)
 
         ### for traditional encoder with bool output
-        # codeword_samples = encoder(message)
-        codeword_samples = torch.cat([message, message, message, message], dim=1)
+        codeword_samples = encoder(message)
 
         ### for normal encoder with float output
         # codeword_dist = encoder(message)
@@ -166,6 +172,45 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         
         output = decoder(src, tgt_input, src_mask, tgt_mask,src_padding_mask, tgt_padding_mask, src_padding_mask)
         
+        """
+        debug
+        """
+        # batch_size = src.size(1)
+        # pad_token = args.alphabet_size
+        # bos_token = args.alphabet_size + 1
+        
+        # src_padding_mask = (src == pad_token).transpose(0, 1)
+        
+        # outputs = torch.zeros(args.message_length, batch_size, decoder.output_dim, device=device)
+        # memory = decoder.encode(src, None, src_padding_mask)
+
+        # # first input to the decoder is the <sos> tokens
+        # ys = torch.tensor([[bos_token]*batch_size], device=device)
+
+        # # mask = [batch size, src len]
+
+        # for t in range(args.message_length):
+        #     # insert input token embedding, previous hidden state, all encoder hidden states
+        #     #  and mask
+        #     # receive output tensor (predictions) and new hidden state
+            
+        #     tgt_mask = (generate_square_subsequent_mask(ys.size(0)).type(torch.bool)).to(device)
+        #     # tgt_mask = None
+        #     features = decoder.decode(ys, memory, tgt_mask)
+        #     features = features.transpose(0, 1)
+        #     output2 = decoder.generator(features[:, -1])
+
+        #     # place predictions in a tensor holding predictions for each token
+        #     outputs[t] = output2
+
+        #     # get the highest predicted token from our predictions
+        #     top1 = output2.argmax(1)
+        #     ys = torch.cat([ys, torch.unsqueeze(top1, 0)], dim=0)
+        
+        """
+        end debug
+        """
+        
         tgt_out = tgt[1:, :]
         
         # output = decoder(x)
@@ -174,8 +219,8 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
             pass
         predictions = output.argmax(-1)
         
-        BLER = torch.mean(torch.all(predictions == tgt_out, dim=0).float())
-        BER = torch.mean((predictions == tgt_out).float())
+        BLER = torch.mean(torch.any(predictions != tgt_out, dim=0).float())
+        BER = torch.mean((predictions != tgt_out).float())
         
         output_dim = output.shape[-1]
         output = output.contiguous().view(-1, output_dim)
@@ -194,7 +239,36 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         
         logger.info("[train] Step: {}/{} ({:.0f}%)\tLoss: {:.6f}\t BER: {}\t BLER: {}"
                     .format(step, args.steps, step/args.steps*100, loss.item(), BER, BLER))
-
+        
+        if step % args.eval_every == 0:
+            logger.info("evaluating...")
+            e_loss, e_BER, e_BLER = test(args, encoder, decoder)
+            writer.add_scalar('eval/Loss', e_loss, step)
+            writer.add_scalar('eval/BLER', e_BLER, step)
+            writer.add_scalar('eval/BER', e_BER, step)
+            
+            logger.info("[eval] Step: {}/{} ({:.0f}%)\tLoss: {:.6f}\t BER: {}\t BLER: {}"
+                        .format(step, args.steps, step/args.steps*100, e_loss, e_BER, e_BLER))
+            
+            if e_BER < best_BER and args.save_model:
+                logger.info("saving model...")
+                best_BER = e_BER
+                checkpoint = {
+                    'args': args.__dict__,
+                    'encoder_name': encoder.__class__.__name__,
+                    'encoder_state': encoder.state_dict(),
+                    'decoder_name': decoder.__class__.__name__,
+                    'decoder_state': decoder.state_dict(),
+                    'step': step,
+                    'loss': e_loss,
+                    'BER': e_BER,
+                    'BLER': e_BLER,
+                    }
+                checkpoint_file = os.path.join(log_dir, "checkpoint.pt")
+                torch.save(checkpoint, checkpoint_file)
+                logger.info("model saved to {}".format(checkpoint_file))
+                
+                
 
 def greedy_decode(args, model, src):
     # src should be (src_length, batch_size)
@@ -217,8 +291,13 @@ def greedy_decode(args, model, src):
         #  and mask
         # receive output tensor (predictions) and new hidden state
         
+        # use when target bits are independent
+        tgt_mask = generate_square_subsequent_mask(ys.size(0)) + generate_square_subsequent_mask(ys.size(0)).transpose(0, 1)
+        
+        # use when target bits depend on the former bits
         # tgt_mask = (generate_square_subsequent_mask(ys.size(0)).type(torch.bool)).to(device)
-        tgt_mask = None
+        
+        # tgt_mask = None
         features = model.decode(ys, memory, tgt_mask)
         features = features.transpose(0, 1)
         output = model.generator(features[:, -1])
@@ -241,8 +320,10 @@ def test(args, encoder, decoder):
     encoder.eval()
     decoder.eval()
     
+    losses, BERs, BLERs = [], [], []
+    
     with torch.no_grad():
-        for step in range(5):
+        for step in range(args.eval_size // args.batch_size):
             message = torch.randint(0, args.alphabet_size, (args.batch_size, args.message_length), device=device)
     
             ### for traditional encoder with bool output
@@ -259,29 +340,27 @@ def test(args, encoder, decoder):
             
             output = greedy_decode(args, decoder, src)
     
-            if step % 100 == 0:
-                pass
             predictions = output.argmax(-1)
             
-            BLER = torch.mean(torch.all(predictions == tgt, dim=0).float())
-            BER = torch.mean((predictions == tgt).float())
+            BLER = torch.mean(torch.any(predictions != tgt, dim=0).float())
+            BER = torch.mean((predictions != tgt).float())
             
             output_dim = output.shape[-1]
             output = output.contiguous().view(-1, output_dim)
             
             loss = criterion(output, tgt.contiguous().view(-1))
             
-            writer.add_scalar('test/Loss', loss.item(), step)
-            writer.add_scalar('test/BLER', BLER, step)
-            writer.add_scalar('test/BER', BER, step)
-            
-            logger.info("[test] Step: {}/{} ({:.0f}%)\tLoss: {:.6f}\t BER: {}\t BLER: {}"
-                        .format(step, args.steps, step/args.steps*100, loss.item(), BER, BLER))
+            losses.append(loss.item())
+            BLERs.append(BLER.cpu())
+            BERs.append(BER.cpu())
             
     if args.train_encoder:
             encoder.train()
     decoder.train()
 
+    return np.mean(losses), np.mean(BERs), np.mean(BLERs)
+            
+    
 
 def main(args):
     # Training settings
@@ -294,36 +373,26 @@ def main(args):
     logger.info("=" * 50)
     
     logger.info('Training on {} datapoints with {} steps and batchsize {}'.format(args.steps*args.batch_size, args.steps, args.batch_size))
-    
-    # train_dataset, train_loader = data_loader(
-    #     dataset_size=args.steps*args.batch_size,
-    #     length=args.length,
-    #     deletion_p=args.channel_prob,
-    #     transition_p=args.transition_prob,
-    #     batch_size=args.batch_size)
-    
-    # test_dataset, test_loader = data_loader(
-    #     dataset_size=args.test_size,
-    #     length=args.length,
-    #     deletion_p=args.channel_prob,
-    #     transition_p=args.transition_prob,
-    #     batch_size=args.test_size)
 
-    def init_weights(m):
-        for name, param in m.named_parameters():
-            if 'weight' in name:
-                nn.init.normal_(param.data, mean=0, std=0.01)
-            else:
-                nn.init.constant_(param.data, 0)
-
-    encoder = RandomSystematicLinearEncoding(args).to(device)
+    encoder = RepetitionCode(args)
+    # encoder = RandomSystematicLinearEncoding(args).to(device)
     # encoder = RandomLinearEncoding(args).to(device)
     decoder = Seq2SeqTransformer(args).to(device)
     # decoder = testDecoder2(args).to(device)
-    # decoder.apply(init_weights)
-    for p in decoder.parameters():
-        if p.dim() > 1:
-            nn.init.xavier_uniform_(p)
+    
+    # for p in decoder.parameters():
+    #     if p.dim() > 1:
+    #         nn.init.xavier_uniform_(p)
+            
+    if args.checkpoint_load_path is not None:
+        logger.info("loading checkpoint from {}".format(args.checkpoint_load_path))
+        checkpoint = torch.load(args.checkpoint_load_path)
+        assert encoder.__class__.__name__ == checkpoint['encoder_name']
+        assert decoder.__class__.__name__ == checkpoint['decoder_name']
+        encoder.load_state_dict(checkpoint['encoder_state'])
+        decoder.load_state_dict(checkpoint['decoder_state'])
+        logger.info("checkpoint loaded step: {}, Loss: {}, BER: {}, BLER: {}"
+                    .format(checkpoint['step'], checkpoint['loss'], checkpoint['BER'], checkpoint['BLER']))
             
     logger.info("The encoder has {} trainable parameters.".format(count_parameters(encoder)))
     logger.info("The decoder has {} trainable parameters.".format(count_parameters(decoder)))
