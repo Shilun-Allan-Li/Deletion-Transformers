@@ -61,7 +61,7 @@ class RandomLinearEncoding(nn.Module):
         self.alphabet_size = args.alphabet_size
 
     def forward(self, x):
-        return (x.float() @ self.matrix).long()
+        return torch.remainder(x.float() @ self.matrix, self.alphabet_size).long()
     
 class RepetitionCode(nn.Module):
     def __init__(self, args):
@@ -71,4 +71,13 @@ class RepetitionCode(nn.Module):
 
     def forward(self, x):
         return torch.cat([x]*self.repeat, dim=1)
+    
+class PolarCode(nn.Module):
+    def __init__(self, args):
+        super(PolarCode, self).__init__()
+        matrix = torch.load("weights/polar_systematic_{}x{}.pt".format(args.code_length, args.message_length)).transpose(0, 1).float()
+        self.register_buffer('matrix', matrix)
+        
+    def forward(self, x):
+        return torch.remainder(x.float() @ self.matrix, 2).long()
 

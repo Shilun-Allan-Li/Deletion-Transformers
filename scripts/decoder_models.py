@@ -4,6 +4,7 @@ import torch
 from torch import nn, Tensor
 import torch.nn.functional as F
 from models import *
+from custom_transformers import Transformer
 import random
 
 
@@ -30,13 +31,13 @@ class Seq2SeqTransformer(nn.Module):
         nhead = emb_size
         dropout=0
         
-        self.transformer = nn.Transformer(d_model=emb_size,
-                                          nhead=nhead,
-                                          activation='relu',
-                                          num_encoder_layers=4,
-                                          num_decoder_layers=4,
-                                          dim_feedforward=8,
-                                          dropout=dropout)
+        self.transformer =  Transformer(d_model=emb_size,
+                                        nhead=nhead,
+                                        activation=torch.sin,
+                                        num_encoder_layers=4,
+                                        num_decoder_layers=2,
+                                        dim_feedforward=8,
+                                        dropout=dropout)
         self.generator = nn.Linear(emb_size, tgt_vocab_size)
         self.src_tok_emb = nn.Embedding(src_vocab_size, emb_size)
         self.tgt_tok_emb = nn.Embedding(tgt_vocab_size, emb_size)
@@ -168,7 +169,7 @@ class testDecoder(nn.Module):
 class testDecoder2(nn.Module):
     def __init__(self, args):
         super().__init__()
-        self.fc = nn.Linear(32, 16)
+        self.fc = nn.Linear(args.code_length, args.message_length)
         # self.fc2 = nn.Linear(48, 16)
         
     def forward(self, x):

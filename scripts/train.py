@@ -29,7 +29,7 @@ checkpoint_path = None
 # checkpoint_path = '../runs/32 repete 4 times/checkpoint.pt'
 
 # General
-parser.add_argument('--log_name', type=str, default="32 repete 4 times",
+parser.add_argument('--log_name', type=str, default="Systematic Polar Code 32 to 128 sine activation decoder 2 layer",
                     help='Name of the log folder (default: current time)')
 parser.add_argument('--checkpoint_load_path', type=str, default=checkpoint_path,
                     help='checkpoint path to load (default: None)')
@@ -46,8 +46,8 @@ parser.add_argument('--channel_prob', type=float, default=0.1,
 # Training args
 parser.add_argument('--batch_size', type=int, default=256,
                     help='input batch size for training (default: 64)')
-parser.add_argument('--steps', type=int, default=40000,
-                    help='number of epochs to train (default: 40000)')
+parser.add_argument('--steps', type=int, default=100000,
+                    help='number of epochs to train (default: 100000)')
 parser.add_argument('--gamma', type=float, default=0.7,
                     help='Learning rate step gamma (default: 0.7)')
 parser.add_argument('--num_sample', type=int, default=16,
@@ -172,49 +172,10 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         
         output = decoder(src, tgt_input, src_mask, tgt_mask,src_padding_mask, tgt_padding_mask, src_padding_mask)
         
-        """
-        debug
-        """
-        # batch_size = src.size(1)
-        # pad_token = args.alphabet_size
-        # bos_token = args.alphabet_size + 1
-        
-        # src_padding_mask = (src == pad_token).transpose(0, 1)
-        
-        # outputs = torch.zeros(args.message_length, batch_size, decoder.output_dim, device=device)
-        # memory = decoder.encode(src, None, src_padding_mask)
-
-        # # first input to the decoder is the <sos> tokens
-        # ys = torch.tensor([[bos_token]*batch_size], device=device)
-
-        # # mask = [batch size, src len]
-
-        # for t in range(args.message_length):
-        #     # insert input token embedding, previous hidden state, all encoder hidden states
-        #     #  and mask
-        #     # receive output tensor (predictions) and new hidden state
-            
-        #     tgt_mask = (generate_square_subsequent_mask(ys.size(0)).type(torch.bool)).to(device)
-        #     # tgt_mask = None
-        #     features = decoder.decode(ys, memory, tgt_mask)
-        #     features = features.transpose(0, 1)
-        #     output2 = decoder.generator(features[:, -1])
-
-        #     # place predictions in a tensor holding predictions for each token
-        #     outputs[t] = output2
-
-        #     # get the highest predicted token from our predictions
-        #     top1 = output2.argmax(1)
-        #     ys = torch.cat([ys, torch.unsqueeze(top1, 0)], dim=0)
-        
-        """
-        end debug
-        """
-        
         tgt_out = tgt[1:, :]
         
         # output = decoder(x)
-
+        
         if step % 100 == 0:
             pass
         predictions = output.argmax(-1)
@@ -374,7 +335,8 @@ def main(args):
     
     logger.info('Training on {} datapoints with {} steps and batchsize {}'.format(args.steps*args.batch_size, args.steps, args.batch_size))
 
-    encoder = RepetitionCode(args)
+    # encoder = RepetitionCode(args).to(device)
+    encoder = PolarCode(args).to(device)
     # encoder = RandomSystematicLinearEncoding(args).to(device)
     # encoder = RandomLinearEncoding(args).to(device)
     decoder = Seq2SeqTransformer(args).to(device)
