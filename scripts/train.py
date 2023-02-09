@@ -29,7 +29,7 @@ checkpoint_path = None
 # checkpoint_path = '../runs/32 repete 4 times/checkpoint.pt'
 
 # General
-parser.add_argument('--log_name', type=str, default="Systematic Polar Code 32 to 128 sine activation decoder 2 layer",
+parser.add_argument('--log_name', type=str, default="systematic polar code 32 to 128 no positional encoding",
                     help='Name of the log folder (default: current time)')
 parser.add_argument('--checkpoint_load_path', type=str, default=checkpoint_path,
                     help='checkpoint path to load (default: None)')
@@ -45,7 +45,7 @@ parser.add_argument('--channel_prob', type=float, default=0.1,
 
 # Training args
 parser.add_argument('--batch_size', type=int, default=256,
-                    help='input batch size for training (default: 64)')
+                    help='input batch size for training (default: 256)')
 parser.add_argument('--steps', type=int, default=100000,
                     help='number of epochs to train (default: 100000)')
 parser.add_argument('--gamma', type=float, default=0.7,
@@ -84,7 +84,7 @@ parser.add_argument('--save_model', action='store_true', default=True,
                     help='For Saving the current Model')
 
 # Misc
-parser.add_argument('--seed', type=int, default=1, metavar='S',
+parser.add_argument('--seed', type=int, default=0, metavar='S',
                     help='random seed (default: 1)')
 
 args = parser.parse_args()
@@ -176,8 +176,8 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         
         # output = decoder(x)
         
-        if step % 100 == 0:
-            pass
+        # if step % 100 == 0:
+        #     print(output)
         predictions = output.argmax(-1)
         
         BLER = torch.mean(torch.any(predictions != tgt_out, dim=0).float())
@@ -336,7 +336,7 @@ def main(args):
     logger.info('Training on {} datapoints with {} steps and batchsize {}'.format(args.steps*args.batch_size, args.steps, args.batch_size))
 
     # encoder = RepetitionCode(args).to(device)
-    encoder = PolarCode(args).to(device)
+    encoder = PolarCode(args, True).to(device)
     # encoder = RandomSystematicLinearEncoding(args).to(device)
     # encoder = RandomLinearEncoding(args).to(device)
     decoder = Seq2SeqTransformer(args).to(device)

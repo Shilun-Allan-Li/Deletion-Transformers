@@ -33,7 +33,7 @@ class RandomSystematicLinearEncoding(nn.Module):
         super(RandomSystematicLinearEncoding, self).__init__()
         # matrix = torch.randint(0, args.alphabet_size, (args.message_length, args.code_length - args.message_length)).float()
         # matrix = torch.zeros((args.message_length, args.code_length - args.message_length))
-        sample = torch.rand((args.message_length, args.code_length - args.message_length)).topk(2, dim=1).indices
+        sample = torch.rand((args.message_length, args.code_length - args.message_length)).topk(3, dim=1).indices
         mask = torch.zeros((args.message_length, args.code_length - args.message_length))
         matrix = mask.scatter_(dim=1, index=sample, value=1)
         matrix = matrix.float()
@@ -73,9 +73,12 @@ class RepetitionCode(nn.Module):
         return torch.cat([x]*self.repeat, dim=1)
     
 class PolarCode(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args, systematic):
         super(PolarCode, self).__init__()
-        matrix = torch.load("weights/polar_systematic_{}x{}.pt".format(args.code_length, args.message_length)).transpose(0, 1).float()
+        if systematic:
+            matrix = torch.load("weights/polar_systematic_{}x{}.pt".format(args.code_length, args.message_length)).transpose(0, 1).float()
+        else:
+            matrix = torch.load("weights/polar_{}x{}.pt".format(args.code_length, args.message_length)).transpose(0, 1).float()
         self.register_buffer('matrix', matrix)
         
     def forward(self, x):

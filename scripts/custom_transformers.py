@@ -63,7 +63,10 @@ class Transformer(Module):
             encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward, dropout,
                                                     activation, layer_norm_eps, batch_first, norm_first,
                                                     **factory_kwargs)
-            encoder_norm = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+            
+            # encoder_norm = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+            encoder_norm = None
+            
             self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
 
         if custom_decoder is not None:
@@ -72,7 +75,10 @@ class Transformer(Module):
             decoder_layer = TransformerDecoderLayer(d_model, nhead, dim_feedforward, dropout,
                                                     activation, layer_norm_eps, batch_first, norm_first,
                                                     **factory_kwargs)
-            decoder_norm = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+            
+            # decoder_norm = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+            decoder_norm = None
+            
             self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm)
 
         self._reset_parameters()
@@ -188,7 +194,8 @@ class TransformerEncoder(Module):
         super(TransformerEncoder, self).__init__()
         self.layers = _get_clones(encoder_layer, num_layers)
         self.num_layers = num_layers
-        self.norm = norm
+        # self.norm = norm
+        self.norm = None
         self.enable_nested_tensor = enable_nested_tensor
         self.mask_check = mask_check
 
@@ -309,7 +316,8 @@ class TransformerDecoder(Module):
         super(TransformerDecoder, self).__init__()
         self.layers = _get_clones(decoder_layer, num_layers)
         self.num_layers = num_layers
-        self.norm = norm
+        # self.norm = norm
+        self.norm = None
 
     def forward(self, tgt: Tensor, memory: Tensor, tgt_mask: Optional[Tensor] = None,
                 memory_mask: Optional[Tensor] = None, tgt_key_padding_mask: Optional[Tensor] = None,
@@ -408,9 +416,9 @@ class TransformerEncoderLayer(Module):
         self.dropout = Dropout(dropout)
         self.linear2 = Linear(dim_feedforward, d_model, **factory_kwargs)
 
-        self.norm_first = norm_first
-        self.norm1 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-        self.norm2 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        # self.norm_first = norm_first
+        # self.norm1 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        # self.norm2 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
         self.dropout1 = Dropout(dropout)
         self.dropout2 = Dropout(dropout)
 
@@ -464,8 +472,8 @@ class TransformerEncoderLayer(Module):
             why_not_sparsity_fast_path = "self_attn._qkv_same_embed_dim was not True"
         elif not self.activation_relu_or_gelu:
             why_not_sparsity_fast_path = "activation_relu_or_gelu was not True"
-        elif not (self.norm1.eps == self.norm2.eps):
-            why_not_sparsity_fast_path = "norm1.eps is not equal to norm2.eps"
+        # elif not (self.norm1.eps == self.norm2.eps):
+        #     why_not_sparsity_fast_path = "norm1.eps is not equal to norm2.eps"
         elif src_mask is not None:
             why_not_sparsity_fast_path = "src_mask is not supported for fastpath"
         elif src.is_nested and src_key_padding_mask is not None:
@@ -482,10 +490,10 @@ class TransformerEncoderLayer(Module):
                 self.self_attn.in_proj_bias,
                 self.self_attn.out_proj.weight,
                 self.self_attn.out_proj.bias,
-                self.norm1.weight,
-                self.norm1.bias,
-                self.norm2.weight,
-                self.norm2.bias,
+                # self.norm1.weight,
+                # self.norm1.bias,
+                # self.norm2.weight,
+                # self.norm2.bias,
                 self.linear1.weight,
                 self.linear1.bias,
                 self.linear2.weight,
@@ -502,41 +510,37 @@ class TransformerEncoderLayer(Module):
                 why_not_sparsity_fast_path = ("grad is enabled and at least one of query or the "
                                               "input/output projection weights or biases requires_grad")
 
-            if not why_not_sparsity_fast_path:
-                return torch._transformer_encoder_layer_fwd(
-                    src,
-                    self.self_attn.embed_dim,
-                    self.self_attn.num_heads,
-                    self.self_attn.in_proj_weight,
-                    self.self_attn.in_proj_bias,
-                    self.self_attn.out_proj.weight,
-                    self.self_attn.out_proj.bias,
-                    self.activation_relu_or_gelu == 2,
-                    self.norm_first,
-                    self.norm1.eps,
-                    self.norm1.weight,
-                    self.norm1.bias,
-                    self.norm2.weight,
-                    self.norm2.bias,
-                    self.linear1.weight,
-                    self.linear1.bias,
-                    self.linear2.weight,
-                    self.linear2.bias,
-                    # TODO: if src_mask and src_key_padding_mask merge to single 4-dim mask
-                    src_mask if src_mask is not None else src_key_padding_mask,
-                    1 if src_key_padding_mask is not None else
-                    0 if src_mask is not None else
-                    None,
-                )
+            # if not why_not_sparsity_fast_path:
+            #     return torch._transformer_encoder_layer_fwd(
+            #         src,
+            #         self.self_attn.embed_dim,
+            #         self.self_attn.num_heads,
+            #         self.self_attn.in_proj_weight,
+            #         self.self_attn.in_proj_bias,
+            #         self.self_attn.out_proj.weight,
+            #         self.self_attn.out_proj.bias,
+            #         self.activation_relu_or_gelu == 2,
+            #         self.norm_first,
+            #         self.norm1.eps,
+            #         self.norm1.weight,
+            #         self.norm1.bias,
+            #         self.norm2.weight,
+            #         self.norm2.bias,
+            #         self.linear1.weight,
+            #         self.linear1.bias,
+            #         self.linear2.weight,
+            #         self.linear2.bias,
+            #         # TODO: if src_mask and src_key_padding_mask merge to single 4-dim mask
+            #         src_mask if src_mask is not None else src_key_padding_mask,
+            #         1 if src_key_padding_mask is not None else
+            #         0 if src_mask is not None else
+            #         None,
+            #     )
 
 
         x = src
-        if self.norm_first:
-            x = x + self._sa_block(self.norm1(x), src_mask, src_key_padding_mask)
-            x = x + self._ff_block(self.norm2(x))
-        else:
-            x = self.norm1(x + self._sa_block(x, src_mask, src_key_padding_mask))
-            x = self.norm2(x + self._ff_block(x))
+        x = x + self._sa_block(x, src_mask, src_key_padding_mask)
+        x = x + self._ff_block(x)
 
         return x
 
@@ -606,10 +610,10 @@ class TransformerDecoderLayer(Module):
         self.dropout = Dropout(dropout)
         self.linear2 = Linear(dim_feedforward, d_model, **factory_kwargs)
 
-        self.norm_first = norm_first
-        self.norm1 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-        self.norm2 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-        self.norm3 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        # self.norm_first = norm_first
+        # self.norm1 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        # self.norm2 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        # self.norm3 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
         self.dropout1 = Dropout(dropout)
         self.dropout2 = Dropout(dropout)
         self.dropout3 = Dropout(dropout)
@@ -643,14 +647,9 @@ class TransformerDecoderLayer(Module):
         # see Fig. 1 of https://arxiv.org/pdf/2002.04745v1.pdf
 
         x = tgt
-        if self.norm_first:
-            x = x + self._sa_block(self.norm1(x), tgt_mask, tgt_key_padding_mask)
-            x = x + self._mha_block(self.norm2(x), memory, memory_mask, memory_key_padding_mask)
-            x = x + self._ff_block(self.norm3(x))
-        else:
-            x = self.norm1(x + self._sa_block(x, tgt_mask, tgt_key_padding_mask))
-            x = self.norm2(x + self._mha_block(x, memory, memory_mask, memory_key_padding_mask))
-            x = self.norm3(x + self._ff_block(x))
+        x = x + self._sa_block(x, tgt_mask, tgt_key_padding_mask)
+        x = x + self._mha_block(x, memory, memory_mask, memory_key_padding_mask)
+        x = x + self._ff_block(x)
 
         return x
 

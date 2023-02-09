@@ -18,6 +18,9 @@ device = torch.device("cuda")
 def mod_relu(x):
     return torch.remainder(F.relu(x), 2) - 1
 
+def sin_activation(x):
+    return torch.sin(x/10)
+
 class Seq2SeqTransformer(nn.Module):
     def __init__(self, args):
         super(Seq2SeqTransformer, self).__init__()
@@ -33,15 +36,15 @@ class Seq2SeqTransformer(nn.Module):
         
         self.transformer =  Transformer(d_model=emb_size,
                                         nhead=nhead,
-                                        activation=torch.sin,
-                                        num_encoder_layers=4,
+                                        activation=sin_activation,
+                                        num_encoder_layers=2,
                                         num_decoder_layers=2,
                                         dim_feedforward=8,
                                         dropout=dropout)
         self.generator = nn.Linear(emb_size, tgt_vocab_size)
         self.src_tok_emb = nn.Embedding(src_vocab_size, emb_size)
         self.tgt_tok_emb = nn.Embedding(tgt_vocab_size, emb_size)
-        self.positional_encoding = PositionalEncoding(emb_size, dropout=dropout)
+        # self.positional_encoding = PositionalEncoding(emb_size, dropout=dropout)
 
     def forward(self,
                 src: Tensor,
@@ -53,18 +56,22 @@ class Seq2SeqTransformer(nn.Module):
                 memory_key_padding_mask: Tensor):
         src_emb = self.positional_encoding(self.src_tok_emb(src))
         tgt_emb = self.positional_encoding(self.tgt_tok_emb(trg))
+        # src_emb = self.src_tok_emb(src)
+        # tgt_emb = self.tgt_tok_emb(trg)
+        
         outs = self.transformer(src_emb, tgt_emb, src_mask, tgt_mask, None,
                                 src_padding_mask, tgt_padding_mask, memory_key_padding_mask)
         return self.generator(outs)
 
     def encode(self, src: Tensor, src_mask: Tensor, src_padding_mask: Tensor):
-        return self.transformer.encoder(self.positional_encoding(
-                            self.src_tok_emb(src)), src_mask, src_padding_mask)
+        src_emb = self.positional_encoding(self.src_tok_emb(src))
+        # src_emb = self.src_tok_emb(src)
+        return self.transformer.encoder(src_emb, src_mask, src_padding_mask)
 
     def decode(self, tgt: Tensor, memory: Tensor, tgt_mask: Tensor):
-        return self.transformer.decoder(self.positional_encoding(
-                          self.tgt_tok_emb(tgt)), memory,
-                          tgt_mask)
+        tgt_emb = self.positional_encoding(self.tgt_tok_emb(tgt))
+        # tgt_emb = self.tgt_tok_emb(tgt)
+        return self.transformer.decoder(tgt_emb, memory, tgt_mask)
 
 
 class Seq2SeqGRU(nn.Module):
