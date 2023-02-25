@@ -29,22 +29,22 @@ checkpoint_path = None
 # checkpoint_path = '../runs/32 repete 4 times/checkpoint.pt'
 
 # General
-parser.add_argument('--log_name', type=str, default="systematic polar code 32 to 128 no positional encoding",
+parser.add_argument('--log_name', type=str, default="deletion code repetition 16 to 64",
                     help='Name of the log folder (default: current time)')
 parser.add_argument('--checkpoint_load_path', type=str, default=checkpoint_path,
                     help='checkpoint path to load (default: None)')
 parser.add_argument('--alphabet_size', type=int, default=2,
                     help='Size of the code alphabet (default: 2)')
-parser.add_argument('--code_length', type=int, default=128,
+parser.add_argument('--code_length', type=int, default=64,
                     help='Length of deletion code (default: 128)')
-parser.add_argument('--message_length', type=int, default=32,
+parser.add_argument('--message_length', type=int, default=16,
                     help='Length message (default: 64)')
 parser.add_argument('--channel_prob', type=float, default=0.1,
                     help='Probability of channel (default: 0.1)')
 
 
 # Training args
-parser.add_argument('--batch_size', type=int, default=256,
+parser.add_argument('--batch_size', type=int, default=64,
                     help='input batch size for training (default: 256)')
 parser.add_argument('--steps', type=int, default=100000,
                     help='number of epochs to train (default: 100000)')
@@ -62,7 +62,7 @@ parser.add_argument('--eval_every', type=int, default=500,
                     help='eval every n steps (default: 1000)')
 
 # Encoder args
-parser.add_argument('--encoder_lr', type=float, default=0.001, metavar='ELR',
+parser.add_argument('--encoder_lr', type=float, default=1e-3, metavar='ELR',
                     help='learning rate (default: 0.001)')
 parser.add_argument('--train_encoder', type=bool, default=False,
                     help='Whether the encoder requires training (default: False)')
@@ -121,20 +121,21 @@ def create_mask(src, tgt, pad_token):
     tgt_seq_len = tgt.shape[0]
     
     # use when target bits are independent
-    tgt_mask = generate_square_subsequent_mask(tgt_seq_len) + generate_square_subsequent_mask(tgt_seq_len).transpose(0, 1)
+    # tgt_mask = generate_square_subsequent_mask(tgt_seq_len) + generate_square_subsequent_mask(tgt_seq_len).transpose(0, 1)
     
     # use when target bits depend on the former bits
-    # tgt_mask = generate_square_subsequent_mask(tgt_seq_len)
+    tgt_mask = generate_square_subsequent_mask(tgt_seq_len)
     
     src_mask = torch.zeros((src_seq_len, src_seq_len),device=device).type(torch.bool)
-
-    src_padding_mask = (src == pad_token).transpose(0, 1)
+    pad_tensor = F.one_hot(torch.tensor([pad_token], device=device), src.size(2)).float()
+    src_padding_mask = torch.all(src == pad_tensor, dim=2).transpose(0, 1)
     tgt_padding_mask = (tgt == pad_token).transpose(0, 1)
     return src_mask, tgt_mask, src_padding_mask, tgt_padding_mask
 
 def train(args, encoder, decoder, E_optimizer, D_optimizer):
     pad_token = args.alphabet_size
     bos_token = args.alphabet_size + 1
+    vocab_size = args.alphabet_size + 2
     criterion = nn.CrossEntropyLoss(ignore_index=pad_token)
     best_BER = 1
 
@@ -148,36 +149,40 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         
         message = torch.randint(0, args.alphabet_size, (args.batch_size, args.message_length), device=device)
 
-        ### for traditional encoder with bool output
-        codeword_samples = encoder(message)
-
-        ### for normal encoder with float output
-        # codeword_dist = encoder(message)
-        # codeword_samples = [codeword_dist[i].multinomial(num_samples=args.num_sample, replacement=True).transpose(0, 1) for i in range(args.batch_size)]
-        # codeword_samples = torch.cat(codeword_samples)
+        if args.train_encoder:
+            ### for trainable encoder with float output
+            codeword_dist = encoder(message)
+            codeword_samples_idx = [codeword_dist[i].multinomial(num_samples=args.num_sample, replacement=True).transpose(0, 1) for i in range(args.batch_size)]
+            codeword_samples_idx = torch.cat(codeword_samples_idx)
+            codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
+            codeword_samples.requires_grad = True
+            message = torch.repeat_interleave(message, args.num_sample, 0)
+        else:
+            ### for traditional encoder with bool output
+            codeword_samples_idx = encoder(message)
+            codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
 
         # codeword_samples is of size (batchsize * num_sample, codeword length)
-        x, src_len = BSCChannel(codeword_samples, args.channel_prob)
+        # x, src_len = BSCChannel(codeword_samples, args.channel_prob)
+        x, src_len = deletionChannel(codeword_samples, args.channel_prob, pad_token, vocab_size)
         
         src = x.transpose(0, 1)
         tgt = message.transpose(0, 1)
         
         # append bos token at the start
-        src = torch.cat([torch.tensor([[bos_token]*args.batch_size], device=device), src], dim=0)
-        tgt = torch.cat([torch.tensor([[bos_token]*args.batch_size], device=device), tgt], dim=0)
+        src = torch.cat([F.one_hot(torch.tensor([[bos_token]*codeword_samples.size(0)], device=device), vocab_size).float(), src], dim=0)
+        tgt = torch.cat([torch.tensor([[bos_token]*codeword_samples.size(0)], device=device), tgt], dim=0)
         
         tgt_input = tgt[:-1, :]
         
         src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input, pad_token)
         
         output = decoder(src, tgt_input, src_mask, tgt_mask,src_padding_mask, tgt_padding_mask, src_padding_mask)
-        
+
         tgt_out = tgt[1:, :]
         
         # output = decoder(x)
         
-        # if step % 100 == 0:
-        #     print(output)
         predictions = output.argmax(-1)
         
         BLER = torch.mean(torch.any(predictions != tgt_out, dim=0).float())
@@ -188,9 +193,10 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         
         loss = criterion(output, tgt_out.contiguous().view(-1))
         loss.backward()
-        # torch.nn.utils.clip_grad_norm_(decoder.parameters(), args.clip)
 
         if args.train_encoder:
+            grad = torch.mean(codeword_samples.grad.view(args.batch_size, args.num_sample, args.code_length, vocab_size), dim=1)[:,:,:args.alphabet_size]
+            torch.autograd.backward(codeword_dist, grad)
             E_optimizer.step()
         D_optimizer.step()
         
@@ -236,8 +242,9 @@ def greedy_decode(args, model, src):
     batch_size = src.size(1)
     pad_token = args.alphabet_size
     bos_token = args.alphabet_size + 1
+    pad_tensor = F.one_hot(torch.tensor([pad_token], device=device), src.size(2)).float()
     
-    src_padding_mask = (src == pad_token).transpose(0, 1)
+    src_padding_mask = torch.all(src == pad_tensor, dim=2).transpose(0, 1)
     
     outputs = torch.zeros(args.message_length, batch_size, model.output_dim, device=device)
     memory = model.encode(src, None, src_padding_mask)
@@ -253,10 +260,10 @@ def greedy_decode(args, model, src):
         # receive output tensor (predictions) and new hidden state
         
         # use when target bits are independent
-        tgt_mask = generate_square_subsequent_mask(ys.size(0)) + generate_square_subsequent_mask(ys.size(0)).transpose(0, 1)
+        # tgt_mask = generate_square_subsequent_mask(ys.size(0)) + generate_square_subsequent_mask(ys.size(0)).transpose(0, 1)
         
         # use when target bits depend on the former bits
-        # tgt_mask = (generate_square_subsequent_mask(ys.size(0)).type(torch.bool)).to(device)
+        tgt_mask = (generate_square_subsequent_mask(ys.size(0)).type(torch.bool)).to(device)
         
         # tgt_mask = None
         features = model.decode(ys, memory, tgt_mask)
@@ -276,6 +283,7 @@ def greedy_decode(args, model, src):
 def test(args, encoder, decoder):
     pad_token = args.alphabet_size
     bos_token = args.alphabet_size + 1
+    vocab_size = args.alphabet_size + 2
     criterion = nn.CrossEntropyLoss(ignore_index=pad_token)
     
     encoder.eval()
@@ -286,18 +294,28 @@ def test(args, encoder, decoder):
     with torch.no_grad():
         for step in range(args.eval_size // args.batch_size):
             message = torch.randint(0, args.alphabet_size, (args.batch_size, args.message_length), device=device)
-    
-            ### for traditional encoder with bool output
-            codeword_samples = encoder(message)
-    
+            
+            if args.train_encoder:
+                ### for trainable encoder with float output
+                codeword_dist = encoder(message)
+                codeword_samples_idx = [codeword_dist[i].multinomial(num_samples=args.num_sample, replacement=True).transpose(0, 1) for i in range(args.batch_size)]
+                codeword_samples_idx = torch.cat(codeword_samples_idx)
+                codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
+                codeword_samples.requires_grad = True
+                message = torch.repeat_interleave(message, args.num_sample, 0)
+            else:
+                ### for traditional encoder with bool output
+                codeword_samples_idx = encoder(message)
+                codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
+
             # codeword_samples is of size (batchsize * num_sample, codeword length)
-            x, src_len = BSCChannel(codeword_samples, args.channel_prob)
+            x, src_len = deletionChannel(codeword_samples, args.channel_prob, pad_token, vocab_size)
             
             src = x.transpose(0, 1)
             tgt = message.transpose(0, 1)
             
             # append bos token at the start
-            src = torch.cat([torch.tensor([[bos_token]*args.batch_size], device=device), src], dim=0)
+            src = torch.cat([F.one_hot(torch.tensor([[bos_token]*codeword_samples.size(0)], device=device), vocab_size).float(), src], dim=0)
             
             output = greedy_decode(args, decoder, src)
     
@@ -335,8 +353,9 @@ def main(args):
     
     logger.info('Training on {} datapoints with {} steps and batchsize {}'.format(args.steps*args.batch_size, args.steps, args.batch_size))
 
-    # encoder = RepetitionCode(args).to(device)
-    encoder = PolarCode(args, True).to(device)
+    # encoder = LSTMEncoder(args).to(device)
+    encoder = RepetitionCode(args).to(device)
+    # encoder = PolarCode(args, True).to(device)
     # encoder = RandomSystematicLinearEncoding(args).to(device)
     # encoder = RandomLinearEncoding(args).to(device)
     decoder = Seq2SeqTransformer(args).to(device)

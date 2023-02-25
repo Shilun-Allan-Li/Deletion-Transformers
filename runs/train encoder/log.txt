@@ -1,0 +1,105 @@
+[INFO: train.py:  343]: training with the following args:
+[INFO: train.py:  344]: ==================================================
+[INFO: train.py:  346]: alphabet_size: 2
+[INFO: train.py:  346]: batch_size: 64
+[INFO: train.py:  346]: channel_prob: 0.1
+[INFO: train.py:  346]: checkpoint_load_path: None
+[INFO: train.py:  346]: clip: 1
+[INFO: train.py:  346]: code_length: 64
+[INFO: train.py:  346]: decoder_d_hidden: 16
+[INFO: train.py:  346]: decoder_e_hidden: 8
+[INFO: train.py:  346]: decoder_forward: 32
+[INFO: train.py:  346]: decoder_lr: 0.01
+[INFO: train.py:  346]: encoder_lr: 0.001
+[INFO: train.py:  346]: eval_every: 10
+[INFO: train.py:  346]: eval_size: 2048
+[INFO: train.py:  346]: gamma: 0.7
+[INFO: train.py:  346]: log_name: train encoder
+[INFO: train.py:  346]: message_length: 16
+[INFO: train.py:  346]: num_sample: 16
+[INFO: train.py:  346]: save_model: True
+[INFO: train.py:  346]: seed: 0
+[INFO: train.py:  346]: steps: 100000
+[INFO: train.py:  346]: train_encoder: True
+[INFO: train.py:  347]: ==================================================
+[INFO: train.py:  349]: Training on 6400000 datapoints with 100000 steps and batchsize 64
+[INFO: train.py:  373]: The encoder has 1140 trainable parameters.
+[INFO: train.py:  374]: The decoder has 2412 trainable parameters.
+[INFO: train.py:  209]: [train] Step: 1/100000 (0%)	Loss: 3.706564	 BER: 1.0	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 2/100000 (0%)	Loss: 2.299063	 BER: 0.9801025390625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 3/100000 (0%)	Loss: 1.590465	 BER: 0.7913818359375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 4/100000 (0%)	Loss: 1.261871	 BER: 0.5802001953125	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 5/100000 (0%)	Loss: 1.146425	 BER: 0.54876708984375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 6/100000 (0%)	Loss: 0.966560	 BER: 0.4613037109375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 7/100000 (0%)	Loss: 0.903553	 BER: 0.51226806640625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 8/100000 (0%)	Loss: 0.795862	 BER: 0.494140625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 9/100000 (0%)	Loss: 0.778186	 BER: 0.4913330078125	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 10/100000 (0%)	Loss: 0.816796	 BER: 0.51312255859375	 BLER: 1.0
+[INFO: train.py:  213]: evaluating...
+[INFO: train.py:  219]: [eval] Step: 10/100000 (0%)	Loss: 0.767049	 BER: 0.4971923828125	 BLER: 1.0
+[INFO: train.py:  223]: saving model...
+[INFO: train.py:  238]: model saved to ../runs/train encoder\checkpoint.pt
+[INFO: train.py:  209]: [train] Step: 11/100000 (0%)	Loss: 0.806905	 BER: 0.51519775390625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 12/100000 (0%)	Loss: 0.728978	 BER: 0.49322509765625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 13/100000 (0%)	Loss: 0.713429	 BER: 0.49798583984375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 14/100000 (0%)	Loss: 0.736416	 BER: 0.494384765625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 15/100000 (0%)	Loss: 0.734843	 BER: 0.46484375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 16/100000 (0%)	Loss: 0.733750	 BER: 0.50885009765625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 17/100000 (0%)	Loss: 0.705882	 BER: 0.50018310546875	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 18/100000 (0%)	Loss: 0.711466	 BER: 0.51434326171875	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 19/100000 (0%)	Loss: 0.713275	 BER: 0.490234375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 20/100000 (0%)	Loss: 0.721920	 BER: 0.500732421875	 BLER: 1.0
+[INFO: train.py:  213]: evaluating...
+[INFO: train.py:  219]: [eval] Step: 20/100000 (0%)	Loss: 0.713592	 BER: 0.503662109375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 21/100000 (0%)	Loss: 0.704803	 BER: 0.50347900390625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 22/100000 (0%)	Loss: 0.698612	 BER: 0.50830078125	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 23/100000 (0%)	Loss: 0.704423	 BER: 0.48248291015625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 24/100000 (0%)	Loss: 0.723402	 BER: 0.50775146484375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 25/100000 (0%)	Loss: 0.712714	 BER: 0.51177978515625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 26/100000 (0%)	Loss: 0.693878	 BER: 0.48980712890625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 27/100000 (0%)	Loss: 0.697151	 BER: 0.48590087890625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 28/100000 (0%)	Loss: 0.726366	 BER: 0.5068359375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 29/100000 (0%)	Loss: 0.717596	 BER: 0.5185546875	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 30/100000 (0%)	Loss: 0.698492	 BER: 0.505126953125	 BLER: 1.0
+[INFO: train.py:  213]: evaluating...
+[INFO: train.py:  219]: [eval] Step: 30/100000 (0%)	Loss: 0.695857	 BER: 0.497222900390625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 31/100000 (0%)	Loss: 0.694408	 BER: 0.47406005859375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 32/100000 (0%)	Loss: 0.720684	 BER: 0.5048828125	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 33/100000 (0%)	Loss: 0.710404	 BER: 0.4775390625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 34/100000 (0%)	Loss: 0.705527	 BER: 0.4931640625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 35/100000 (0%)	Loss: 0.688657	 BER: 0.4586181640625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 36/100000 (0%)	Loss: 0.693570	 BER: 0.48760986328125	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 37/100000 (0%)	Loss: 0.699243	 BER: 0.494384765625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 38/100000 (0%)	Loss: 0.705851	 BER: 0.4990234375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 39/100000 (0%)	Loss: 0.702652	 BER: 0.51397705078125	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 40/100000 (0%)	Loss: 0.696389	 BER: 0.524658203125	 BLER: 1.0
+[INFO: train.py:  213]: evaluating...
+[INFO: train.py:  219]: [eval] Step: 40/100000 (0%)	Loss: 0.694245	 BER: 0.498931884765625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 41/100000 (0%)	Loss: 0.700089	 BER: 0.52728271484375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 42/100000 (0%)	Loss: 0.700151	 BER: 0.50543212890625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 43/100000 (0%)	Loss: 0.699307	 BER: 0.5140380859375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 44/100000 (0%)	Loss: 0.694134	 BER: 0.497314453125	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 45/100000 (0%)	Loss: 0.696983	 BER: 0.503662109375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 46/100000 (0%)	Loss: 0.698709	 BER: 0.498291015625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 47/100000 (0%)	Loss: 0.700327	 BER: 0.49981689453125	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 48/100000 (0%)	Loss: 0.696123	 BER: 0.49615478515625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 49/100000 (0%)	Loss: 0.694351	 BER: 0.4979248046875	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 50/100000 (0%)	Loss: 0.697373	 BER: 0.521240234375	 BLER: 1.0
+[INFO: train.py:  213]: evaluating...
+[INFO: train.py:  219]: [eval] Step: 50/100000 (0%)	Loss: 0.694177	 BER: 0.4964599609375	 BLER: 1.0
+[INFO: train.py:  223]: saving model...
+[INFO: train.py:  238]: model saved to ../runs/train encoder\checkpoint.pt
+[INFO: train.py:  209]: [train] Step: 51/100000 (0%)	Loss: 0.696576	 BER: 0.4912109375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 52/100000 (0%)	Loss: 0.698555	 BER: 0.5174560546875	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 53/100000 (0%)	Loss: 0.692792	 BER: 0.49273681640625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 54/100000 (0%)	Loss: 0.698868	 BER: 0.53765869140625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 55/100000 (0%)	Loss: 0.697199	 BER: 0.50677490234375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 56/100000 (0%)	Loss: 0.692099	 BER: 0.479736328125	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 57/100000 (0%)	Loss: 0.693882	 BER: 0.49664306640625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 58/100000 (0%)	Loss: 0.695745	 BER: 0.51751708984375	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 59/100000 (0%)	Loss: 0.692704	 BER: 0.47900390625	 BLER: 1.0
+[INFO: train.py:  209]: [train] Step: 60/100000 (0%)	Loss: 0.694255	 BER: 0.4954833984375	 BLER: 1.0
+[INFO: train.py:  213]: evaluating...
+[INFO: train.py:  219]: [eval] Step: 60/100000 (0%)	Loss: 0.693476	 BER: 0.49359130859375	 BLER: 1.0
+[INFO: train.py:  223]: saving model...
+[INFO: train.py:  238]: model saved to ../runs/train encoder\checkpoint.pt
