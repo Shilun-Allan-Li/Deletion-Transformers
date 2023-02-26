@@ -29,22 +29,22 @@ checkpoint_path = None
 # checkpoint_path = '../runs/32 repete 4 times/checkpoint.pt'
 
 # General
-parser.add_argument('--log_name', type=str, default="deletion code repetition 16 to 64",
+parser.add_argument('--log_name', type=str, default="AWGN 100 to 300 SNR 0",
                     help='Name of the log folder (default: current time)')
 parser.add_argument('--checkpoint_load_path', type=str, default=checkpoint_path,
                     help='checkpoint path to load (default: None)')
 parser.add_argument('--alphabet_size', type=int, default=2,
                     help='Size of the code alphabet (default: 2)')
-parser.add_argument('--code_length', type=int, default=64,
+parser.add_argument('--code_length', type=int, default=300,
                     help='Length of deletion code (default: 128)')
-parser.add_argument('--message_length', type=int, default=16,
+parser.add_argument('--message_length', type=int, default=100,
                     help='Length message (default: 64)')
 parser.add_argument('--channel_prob', type=float, default=0.1,
                     help='Probability of channel (default: 0.1)')
 
 
 # Training args
-parser.add_argument('--batch_size', type=int, default=64,
+parser.add_argument('--batch_size', type=int, default=256,
                     help='input batch size for training (default: 256)')
 parser.add_argument('--steps', type=int, default=100000,
                     help='number of epochs to train (default: 100000)')
@@ -64,7 +64,7 @@ parser.add_argument('--eval_every', type=int, default=500,
 # Encoder args
 parser.add_argument('--encoder_lr', type=float, default=1e-3, metavar='ELR',
                     help='learning rate (default: 0.001)')
-parser.add_argument('--train_encoder', type=bool, default=False,
+parser.add_argument('--train_encoder', type=bool, default=True,
                     help='Whether the encoder requires training (default: False)')
 # parser.add_argument('--encoder_hidden', type=int, default=128,
 #                     help='hidden layer dimension of encoder (default: 128)')
@@ -121,10 +121,10 @@ def create_mask(src, tgt, pad_token):
     tgt_seq_len = tgt.shape[0]
     
     # use when target bits are independent
-    # tgt_mask = generate_square_subsequent_mask(tgt_seq_len) + generate_square_subsequent_mask(tgt_seq_len).transpose(0, 1)
+    tgt_mask = generate_square_subsequent_mask(tgt_seq_len) + generate_square_subsequent_mask(tgt_seq_len).transpose(0, 1)
     
     # use when target bits depend on the former bits
-    tgt_mask = generate_square_subsequent_mask(tgt_seq_len)
+    # tgt_mask = generate_square_subsequent_mask(tgt_seq_len)
     
     src_mask = torch.zeros((src_seq_len, src_seq_len),device=device).type(torch.bool)
     pad_tensor = F.one_hot(torch.tensor([pad_token], device=device), src.size(2)).float()
@@ -149,22 +149,32 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         
         message = torch.randint(0, args.alphabet_size, (args.batch_size, args.message_length), device=device)
 
-        if args.train_encoder:
-            ### for trainable encoder with float output
-            codeword_dist = encoder(message)
-            codeword_samples_idx = [codeword_dist[i].multinomial(num_samples=args.num_sample, replacement=True).transpose(0, 1) for i in range(args.batch_size)]
-            codeword_samples_idx = torch.cat(codeword_samples_idx)
-            codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
-            codeword_samples.requires_grad = True
-            message = torch.repeat_interleave(message, args.num_sample, 0)
-        else:
-            ### for traditional encoder with bool output
-            codeword_samples_idx = encoder(message)
-            codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
-
+        # if args.train_encoder:
+        #     ### for trainable encoder with float output
+        #     codeword_dist = encoder(message)
+        #     codeword_samples_idx = [codeword_dist[i].multinomial(num_samples=args.num_sample, replacement=True).transpose(0, 1) for i in range(args.batch_size)]
+        #     codeword_samples_idx = torch.cat(codeword_samples_idx)
+        #     codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
+        #     codeword_samples.requires_grad = True
+        #     message = torch.repeat_interleave(message, args.num_sample, 0)
+        # else:
+        #     ### for traditional encoder with bool output
+        #     codeword_samples_idx = encoder(message)
+        #     codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
+        
+        """test AWGN"""
+        codeword = encoder(message)
+        mu = torch.mean(codeword)
+        sigma = torch.std(codeword)
+        codeword = (codeword - mu) / sigma
+        codeword_samples = torch.zeros((args.batch_size, args.code_length, 4), device=device)
+        codeword_samples[:, :, 0] = codeword[:, :, 0]
+        
+        x, src_len = AWGN(codeword_samples, 3)
+        
         # codeword_samples is of size (batchsize * num_sample, codeword length)
         # x, src_len = BSCChannel(codeword_samples, args.channel_prob)
-        x, src_len = deletionChannel(codeword_samples, args.channel_prob, pad_token, vocab_size)
+        # x, src_len = deletionChannel(codeword_samples, args.channel_prob, pad_token, vocab_size)
         
         src = x.transpose(0, 1)
         tgt = message.transpose(0, 1)
@@ -177,7 +187,7 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         
         src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input, pad_token)
         
-        output = decoder(src, tgt_input, src_mask, tgt_mask,src_padding_mask, tgt_padding_mask, src_padding_mask)
+        output = decoder(src.float(), tgt_input, src_mask, tgt_mask,src_padding_mask, tgt_padding_mask, src_padding_mask)
 
         tgt_out = tgt[1:, :]
         
@@ -194,10 +204,11 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         loss = criterion(output, tgt_out.contiguous().view(-1))
         loss.backward()
 
-        if args.train_encoder:
-            grad = torch.mean(codeword_samples.grad.view(args.batch_size, args.num_sample, args.code_length, vocab_size), dim=1)[:,:,:args.alphabet_size]
-            torch.autograd.backward(codeword_dist, grad)
-            E_optimizer.step()
+        # if args.train_encoder:
+        #     grad = torch.mean(codeword_samples.grad.view(args.batch_size, args.num_sample, args.code_length, vocab_size), dim=1)[:,:,:args.alphabet_size]
+        #     torch.autograd.backward(codeword_dist, grad)
+        #     E_optimizer.step()
+        E_optimizer.step()
         D_optimizer.step()
         
         writer.add_scalar('train/Loss', loss.item(), step)
@@ -260,10 +271,10 @@ def greedy_decode(args, model, src):
         # receive output tensor (predictions) and new hidden state
         
         # use when target bits are independent
-        # tgt_mask = generate_square_subsequent_mask(ys.size(0)) + generate_square_subsequent_mask(ys.size(0)).transpose(0, 1)
+        tgt_mask = generate_square_subsequent_mask(ys.size(0)) + generate_square_subsequent_mask(ys.size(0)).transpose(0, 1)
         
         # use when target bits depend on the former bits
-        tgt_mask = (generate_square_subsequent_mask(ys.size(0)).type(torch.bool)).to(device)
+        # tgt_mask = (generate_square_subsequent_mask(ys.size(0)).type(torch.bool)).to(device)
         
         # tgt_mask = None
         features = model.decode(ys, memory, tgt_mask)
@@ -295,21 +306,36 @@ def test(args, encoder, decoder):
         for step in range(args.eval_size // args.batch_size):
             message = torch.randint(0, args.alphabet_size, (args.batch_size, args.message_length), device=device)
             
-            if args.train_encoder:
-                ### for trainable encoder with float output
-                codeword_dist = encoder(message)
-                codeword_samples_idx = [codeword_dist[i].multinomial(num_samples=args.num_sample, replacement=True).transpose(0, 1) for i in range(args.batch_size)]
-                codeword_samples_idx = torch.cat(codeword_samples_idx)
-                codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
-                codeword_samples.requires_grad = True
-                message = torch.repeat_interleave(message, args.num_sample, 0)
-            else:
-                ### for traditional encoder with bool output
-                codeword_samples_idx = encoder(message)
-                codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
+            # if args.train_encoder:
+            #     ### for trainable encoder with float output
+            #     codeword_dist = encoder(message)
+            #     codeword_samples_idx = [codeword_dist[i].multinomial(num_samples=args.num_sample, replacement=True).transpose(0, 1) for i in range(args.batch_size)]
+            #     codeword_samples_idx = torch.cat(codeword_samples_idx)
+            #     codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
+            #     codeword_samples.requires_grad = True
+            #     message = torch.repeat_interleave(message, args.num_sample, 0)
+            # else:
+            #     ### for traditional encoder with bool output
+            #     codeword_samples_idx = encoder(message)
+            #     codeword_samples = F.one_hot(codeword_samples_idx, vocab_size).float()
 
-            # codeword_samples is of size (batchsize * num_sample, codeword length)
-            x, src_len = deletionChannel(codeword_samples, args.channel_prob, pad_token, vocab_size)
+            # # codeword_samples is of size (batchsize * num_sample, codeword length)
+            # x, src_len = deletionChannel(codeword_samples, args.channel_prob, pad_token, vocab_size)
+            
+            
+            
+            """test AWGN"""
+            codeword = encoder(message)
+            mu = torch.mean(codeword)
+            sigma = torch.std(codeword)
+            codeword = (codeword - mu) / sigma
+            codeword_samples = torch.zeros((args.batch_size, args.code_length, 4), device=device)
+            codeword_samples[:, :, 0] = codeword[:, :, 0]
+            
+            x, src_len = AWGN(codeword_samples, 0)
+            
+            
+            
             
             src = x.transpose(0, 1)
             tgt = message.transpose(0, 1)
@@ -317,7 +343,7 @@ def test(args, encoder, decoder):
             # append bos token at the start
             src = torch.cat([F.one_hot(torch.tensor([[bos_token]*codeword_samples.size(0)], device=device), vocab_size).float(), src], dim=0)
             
-            output = greedy_decode(args, decoder, src)
+            output = greedy_decode(args, decoder, src.float())
     
             predictions = output.argmax(-1)
             
@@ -353,8 +379,8 @@ def main(args):
     
     logger.info('Training on {} datapoints with {} steps and batchsize {}'.format(args.steps*args.batch_size, args.steps, args.batch_size))
 
-    # encoder = LSTMEncoder(args).to(device)
-    encoder = RepetitionCode(args).to(device)
+    encoder = LSTMEncoder(args).to(device)
+    # encoder = RepetitionCode(args).to(device)
     # encoder = PolarCode(args, True).to(device)
     # encoder = RandomSystematicLinearEncoding(args).to(device)
     # encoder = RandomLinearEncoding(args).to(device)

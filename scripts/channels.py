@@ -28,3 +28,8 @@ def BSCChannel(x, p):
     # x is of shape (N, codeword length)
     mask = torch.rand(x.shape, device=device) < p
     return torch.logical_xor(x, mask).long(), torch.tensor([x.size(1)]*x.size(0), device=device)
+
+def AWGN(x, SNR):
+    sigma2 = 10**(-SNR/10)
+    noise = torch.randn(x.shape, dtype=float, device=device)
+    return x + noise, torch.tensor([x.size(1)]*x.size(0), device=device)

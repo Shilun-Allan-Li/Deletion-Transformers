@@ -16,7 +16,8 @@ class LSTMEncoder(nn.Module):
         super(LSTMEncoder, self).__init__()
         self.emb = nn.Embedding(args.alphabet_size, args.alphabet_size)
         self.linear = nn.Conv1d(args.message_length, args.code_length, kernel_size=1, padding=0)
-        self.lstm = nn.LSTM(args.alphabet_size, args.alphabet_size, batch_first=True)
+        # self.lstm = nn.LSTM(args.alphabet_size, args.alphabet_size, batch_first=True)
+        self.lstm = nn.LSTM(args.alphabet_size, 1, batch_first=True)
         self.softmax = nn.Softmax(dim=-1)
         
 
@@ -26,7 +27,28 @@ class LSTMEncoder(nn.Module):
         hidden = self.linear(x)
         logits, _ = self.lstm(hidden)
         # output size is (batch, code length, alphabet size)
-        output = self.softmax(logits)
+        # output = self.softmax(logits)
+        output = logits
+        return output
+    
+class TransformerEncoder(nn.Module):
+    def __init__(self, args):
+        super(TransformerEncoder, self).__init__()
+        self.emb = nn.Embedding(args.alphabet_size, args.alphabet_size)
+        self.linear = nn.Conv1d(args.message_length, args.code_length, kernel_size=1, padding=0)
+        # self.lstm = nn.LSTM(args.alphabet_size, args.alphabet_size, batch_first=True)
+        self.lstm = nn.LSTM(args.alphabet_size, 1, batch_first=True)
+        self.softmax = nn.Softmax(dim=-1)
+        
+
+    def forward(self, x):
+        # x has size (batch, message length)
+        x = self.emb(x)
+        hidden = self.linear(x)
+        logits, _ = self.lstm(hidden)
+        # output size is (batch, code length, alphabet size)
+        # output = self.softmax(logits)
+        output = logits
         return output
 
 

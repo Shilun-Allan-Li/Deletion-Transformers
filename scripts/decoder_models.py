@@ -5,6 +5,7 @@ from torch import nn, Tensor
 import torch.nn.functional as F
 from models import *
 from custom_transformers import Transformer
+# from torch.nn import Transformer
 import random
 
 
@@ -54,7 +55,6 @@ class Seq2SeqTransformer(nn.Module):
                 src_padding_mask: Tensor,
                 tgt_padding_mask: Tensor,
                 memory_key_padding_mask: Tensor):
-        
         src_emb = self.positional_encoding(self.src_tok_emb(src))
         tgt_emb = self.positional_encoding(self.tgt_tok_emb(trg))
         # src_emb = self.src_tok_emb(src)

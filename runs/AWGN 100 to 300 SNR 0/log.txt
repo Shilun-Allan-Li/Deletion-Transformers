@@ -1,0 +1,182 @@
+[INFO: train.py:  374]: training with the following args:
+[INFO: train.py:  375]: ==================================================
+[INFO: train.py:  377]: alphabet_size: 2
+[INFO: train.py:  377]: batch_size: 256
+[INFO: train.py:  377]: channel_prob: 0.1
+[INFO: train.py:  377]: checkpoint_load_path: None
+[INFO: train.py:  377]: clip: 1
+[INFO: train.py:  377]: code_length: 300
+[INFO: train.py:  377]: decoder_d_hidden: 16
+[INFO: train.py:  377]: decoder_e_hidden: 8
+[INFO: train.py:  377]: decoder_forward: 32
+[INFO: train.py:  377]: decoder_lr: 0.01
+[INFO: train.py:  377]: encoder_lr: 0.001
+[INFO: train.py:  377]: eval_every: 500
+[INFO: train.py:  377]: eval_size: 2048
+[INFO: train.py:  377]: gamma: 0.7
+[INFO: train.py:  377]: log_name: AWGN 100 to 300 SNR 0
+[INFO: train.py:  377]: message_length: 100
+[INFO: train.py:  377]: num_sample: 16
+[INFO: train.py:  377]: save_model: True
+[INFO: train.py:  377]: seed: 0
+[INFO: train.py:  377]: steps: 100000
+[INFO: train.py:  377]: train_encoder: True
+[INFO: train.py:  378]: ==================================================
+[INFO: train.py:  380]: Training on 25600000 datapoints with 100000 steps and batchsize 256
+[INFO: train.py:  404]: The encoder has 30324 trainable parameters.
+[INFO: train.py:  405]: The decoder has 3836 trainable parameters.
+[INFO: train.py:  218]: [train] Step: 1/100000 (0%)	Loss: 1.387604	 BER: 0.640820324420929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 2/100000 (0%)	Loss: 1.152142	 BER: 0.5021874904632568	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 3/100000 (0%)	Loss: 1.062768	 BER: 0.4979296624660492	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 4/100000 (0%)	Loss: 1.004912	 BER: 0.4997656047344208	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 5/100000 (0%)	Loss: 0.964452	 BER: 0.49980467557907104	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 6/100000 (0%)	Loss: 0.931164	 BER: 0.49796873331069946	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 7/100000 (0%)	Loss: 0.901885	 BER: 0.5007421970367432	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 8/100000 (0%)	Loss: 0.875274	 BER: 0.5002734065055847	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 9/100000 (0%)	Loss: 0.851660	 BER: 0.4961327910423279	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 10/100000 (0%)	Loss: 0.830778	 BER: 0.5010937452316284	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 11/100000 (0%)	Loss: 0.811412	 BER: 0.4946874976158142	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 12/100000 (0%)	Loss: 0.794883	 BER: 0.4997265636920929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 13/100000 (0%)	Loss: 0.780156	 BER: 0.5005468726158142	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 14/100000 (0%)	Loss: 0.767621	 BER: 0.5021874904632568	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 15/100000 (0%)	Loss: 0.757320	 BER: 0.5044140219688416	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 16/100000 (0%)	Loss: 0.748280	 BER: 0.5005859136581421	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 17/100000 (0%)	Loss: 0.740812	 BER: 0.5012890696525574	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 18/100000 (0%)	Loss: 0.734228	 BER: 0.4996093511581421	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 19/100000 (0%)	Loss: 0.728795	 BER: 0.5008593797683716	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 20/100000 (0%)	Loss: 0.724332	 BER: 0.5020312666893005	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 21/100000 (0%)	Loss: 0.720504	 BER: 0.4996093511581421	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 22/100000 (0%)	Loss: 0.717146	 BER: 0.49546873569488525	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 23/100000 (0%)	Loss: 0.714427	 BER: 0.4976562261581421	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 24/100000 (0%)	Loss: 0.712079	 BER: 0.4991796910762787	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 25/100000 (0%)	Loss: 0.709992	 BER: 0.4955078065395355	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 26/100000 (0%)	Loss: 0.708252	 BER: 0.494453102350235	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 27/100000 (0%)	Loss: 0.706817	 BER: 0.49949216842651367	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 28/100000 (0%)	Loss: 0.705555	 BER: 0.4992968738079071	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 29/100000 (0%)	Loss: 0.704364	 BER: 0.49617186188697815	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 30/100000 (0%)	Loss: 0.703536	 BER: 0.5025390386581421	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 31/100000 (0%)	Loss: 0.702614	 BER: 0.5041796565055847	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 32/100000 (0%)	Loss: 0.701783	 BER: 0.495429664850235	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 33/100000 (0%)	Loss: 0.701239	 BER: 0.4972265660762787	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 34/100000 (0%)	Loss: 0.701030	 BER: 0.504101574420929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 35/100000 (0%)	Loss: 0.700124	 BER: 0.4963671863079071	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 36/100000 (0%)	Loss: 0.699694	 BER: 0.5004687309265137	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 37/100000 (0%)	Loss: 0.699266	 BER: 0.49828124046325684	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 38/100000 (0%)	Loss: 0.699069	 BER: 0.5016015768051147	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 39/100000 (0%)	Loss: 0.698561	 BER: 0.49628904461860657	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 40/100000 (0%)	Loss: 0.698335	 BER: 0.4982031285762787	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 41/100000 (0%)	Loss: 0.698106	 BER: 0.5041796565055847	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 42/100000 (0%)	Loss: 0.697784	 BER: 0.49730467796325684	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 43/100000 (0%)	Loss: 0.697627	 BER: 0.4975000023841858	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 44/100000 (0%)	Loss: 0.697530	 BER: 0.49839842319488525	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 45/100000 (0%)	Loss: 0.697182	 BER: 0.4944140613079071	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 46/100000 (0%)	Loss: 0.697009	 BER: 0.4957031011581421	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 47/100000 (0%)	Loss: 0.696932	 BER: 0.501953125	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 48/100000 (0%)	Loss: 0.696780	 BER: 0.5010156035423279	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 49/100000 (0%)	Loss: 0.696672	 BER: 0.49910154938697815	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 50/100000 (0%)	Loss: 0.696655	 BER: 0.5032421946525574	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 51/100000 (0%)	Loss: 0.696424	 BER: 0.49949216842651367	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 52/100000 (0%)	Loss: 0.696264	 BER: 0.49339842796325684	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 53/100000 (0%)	Loss: 0.696388	 BER: 0.4992968738079071	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 54/100000 (0%)	Loss: 0.696318	 BER: 0.49949216842651367	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 55/100000 (0%)	Loss: 0.696219	 BER: 0.5036718845367432	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 56/100000 (0%)	Loss: 0.695980	 BER: 0.4987500011920929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 57/100000 (0%)	Loss: 0.696140	 BER: 0.5010547041893005	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 58/100000 (0%)	Loss: 0.696182	 BER: 0.5032421946525574	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 59/100000 (0%)	Loss: 0.695841	 BER: 0.5025390386581421	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 60/100000 (0%)	Loss: 0.695847	 BER: 0.5036327838897705	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 61/100000 (0%)	Loss: 0.695785	 BER: 0.4987890422344208	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 62/100000 (0%)	Loss: 0.695961	 BER: 0.5057030916213989	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 63/100000 (0%)	Loss: 0.695527	 BER: 0.49269530177116394	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 64/100000 (0%)	Loss: 0.695745	 BER: 0.5066796541213989	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 65/100000 (0%)	Loss: 0.695476	 BER: 0.49867185950279236	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 66/100000 (0%)	Loss: 0.695411	 BER: 0.4974609315395355	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 67/100000 (0%)	Loss: 0.695377	 BER: 0.4991406202316284	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 68/100000 (0%)	Loss: 0.695349	 BER: 0.5036327838897705	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 69/100000 (0%)	Loss: 0.695317	 BER: 0.5067187547683716	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 70/100000 (0%)	Loss: 0.695236	 BER: 0.4962500035762787	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 71/100000 (0%)	Loss: 0.695229	 BER: 0.4994140565395355	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 72/100000 (0%)	Loss: 0.695210	 BER: 0.4980859160423279	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 73/100000 (0%)	Loss: 0.695195	 BER: 0.5017187595367432	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 74/100000 (0%)	Loss: 0.695096	 BER: 0.49437499046325684	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 75/100000 (0%)	Loss: 0.695078	 BER: 0.49996092915534973	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 76/100000 (0%)	Loss: 0.695063	 BER: 0.4966796636581421	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 77/100000 (0%)	Loss: 0.695052	 BER: 0.5036327838897705	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 78/100000 (0%)	Loss: 0.695005	 BER: 0.5014452934265137	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 79/100000 (0%)	Loss: 0.694969	 BER: 0.5000390410423279	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 80/100000 (0%)	Loss: 0.695006	 BER: 0.5034765601158142	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 81/100000 (0%)	Loss: 0.694958	 BER: 0.5036718845367432	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 82/100000 (0%)	Loss: 0.694852	 BER: 0.4949999749660492	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 83/100000 (0%)	Loss: 0.695029	 BER: 0.5051953196525574	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 84/100000 (0%)	Loss: 0.694863	 BER: 0.4977343678474426	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 85/100000 (0%)	Loss: 0.694828	 BER: 0.4977734386920929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 86/100000 (0%)	Loss: 0.694706	 BER: 0.49363279342651367	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 87/100000 (0%)	Loss: 0.694979	 BER: 0.5016796588897705	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 88/100000 (0%)	Loss: 0.694839	 BER: 0.501171886920929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 89/100000 (0%)	Loss: 0.694781	 BER: 0.5018749833106995	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 90/100000 (0%)	Loss: 0.694866	 BER: 0.5024218559265137	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 91/100000 (0%)	Loss: 0.694699	 BER: 0.49953123927116394	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 92/100000 (0%)	Loss: 0.694651	 BER: 0.49726560711860657	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 93/100000 (0%)	Loss: 0.694770	 BER: 0.5012499690055847	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 94/100000 (0%)	Loss: 0.694774	 BER: 0.502148449420929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 95/100000 (0%)	Loss: 0.694627	 BER: 0.502148449420929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 96/100000 (0%)	Loss: 0.694628	 BER: 0.4978124797344208	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 97/100000 (0%)	Loss: 0.694881	 BER: 0.5024608969688416	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 98/100000 (0%)	Loss: 0.694583	 BER: 0.497382789850235	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 99/100000 (0%)	Loss: 0.694534	 BER: 0.4967968761920929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 100/100000 (0%)	Loss: 0.694628	 BER: 0.4990234375	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 101/100000 (0%)	Loss: 0.694917	 BER: 0.5062499642372131	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 102/100000 (0%)	Loss: 0.694517	 BER: 0.5012499690055847	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 103/100000 (0%)	Loss: 0.694797	 BER: 0.5035937428474426	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 104/100000 (0%)	Loss: 0.694581	 BER: 0.4988671839237213	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 105/100000 (0%)	Loss: 0.694455	 BER: 0.49910154938697815	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 106/100000 (0%)	Loss: 0.694403	 BER: 0.4968359172344208	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 107/100000 (0%)	Loss: 0.694577	 BER: 0.5009765625	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 108/100000 (0%)	Loss: 0.694577	 BER: 0.5036327838897705	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 109/100000 (0%)	Loss: 0.694410	 BER: 0.5005859136581421	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 110/100000 (0%)	Loss: 0.694646	 BER: 0.503125011920929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 111/100000 (0%)	Loss: 0.694360	 BER: 0.49785155057907104	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 112/100000 (0%)	Loss: 0.694347	 BER: 0.4916015565395355	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 113/100000 (0%)	Loss: 0.694341	 BER: 0.4997265636920929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 114/100000 (0%)	Loss: 0.694288	 BER: 0.4975000023841858	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 115/100000 (0%)	Loss: 0.694416	 BER: 0.5070703029632568	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 116/100000 (0%)	Loss: 0.694353	 BER: 0.5012109279632568	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 117/100000 (0%)	Loss: 0.694333	 BER: 0.4981640577316284	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 118/100000 (0%)	Loss: 0.694500	 BER: 0.5080468654632568	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 119/100000 (0%)	Loss: 0.694292	 BER: 0.4982031285762787	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 120/100000 (0%)	Loss: 0.694550	 BER: 0.49937498569488525	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 121/100000 (0%)	Loss: 0.694254	 BER: 0.49535155296325684	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 122/100000 (0%)	Loss: 0.694347	 BER: 0.505859375	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 123/100000 (0%)	Loss: 0.694379	 BER: 0.4995703101158142	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 124/100000 (0%)	Loss: 0.694635	 BER: 0.5002343654632568	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 125/100000 (0%)	Loss: 0.694321	 BER: 0.5008593797683716	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 126/100000 (0%)	Loss: 0.694254	 BER: 0.5008984208106995	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 127/100000 (0%)	Loss: 0.694489	 BER: 0.5004296898841858	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 128/100000 (0%)	Loss: 0.694368	 BER: 0.501171886920929	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 129/100000 (0%)	Loss: 0.694129	 BER: 0.49714842438697815	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 130/100000 (0%)	Loss: 0.693973	 BER: 0.4905078113079071	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 131/100000 (0%)	Loss: 0.695167	 BER: 0.5049218535423279	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 132/100000 (0%)	Loss: 0.694203	 BER: 0.499335914850235	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 133/100000 (0%)	Loss: 0.694128	 BER: 0.4968359172344208	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 134/100000 (0%)	Loss: 0.694391	 BER: 0.4949609339237213	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 135/100000 (0%)	Loss: 0.694722	 BER: 0.5006640553474426	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 136/100000 (0%)	Loss: 0.694075	 BER: 0.4972265660762787	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 137/100000 (0%)	Loss: 0.694419	 BER: 0.5028905868530273	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 138/100000 (0%)	Loss: 0.694469	 BER: 0.5030859112739563	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 139/100000 (0%)	Loss: 0.694094	 BER: 0.5028515458106995	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 140/100000 (0%)	Loss: 0.694474	 BER: 0.5017187595367432	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 141/100000 (0%)	Loss: 0.694694	 BER: 0.5044140219688416	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 142/100000 (0%)	Loss: 0.694044	 BER: 0.5024999976158142	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 143/100000 (0%)	Loss: 0.694488	 BER: 0.500781238079071	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 144/100000 (0%)	Loss: 0.694208	 BER: 0.4945703148841858	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 145/100000 (0%)	Loss: 0.694208	 BER: 0.49953123927116394	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 146/100000 (0%)	Loss: 0.693968	 BER: 0.4962109327316284	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 147/100000 (0%)	Loss: 0.694690	 BER: 0.5036718845367432	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 148/100000 (0%)	Loss: 0.694524	 BER: 0.5050390362739563	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 149/100000 (0%)	Loss: 0.694035	 BER: 0.5012499690055847	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 150/100000 (0%)	Loss: 0.694747	 BER: 0.5057030916213989	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 151/100000 (0%)	Loss: 0.694047	 BER: 0.4981640577316284	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 152/100000 (0%)	Loss: 0.693963	 BER: 0.5003515481948853	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 153/100000 (0%)	Loss: 0.694258	 BER: 0.5022265315055847	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 154/100000 (0%)	Loss: 0.693899	 BER: 0.4949609339237213	 BLER: 1.0
+[INFO: train.py:  218]: [train] Step: 155/100000 (0%)	Loss: 0.693915	 BER: 0.49660155177116394	 BLER: 1.0
