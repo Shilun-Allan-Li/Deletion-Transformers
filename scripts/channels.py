@@ -30,6 +30,19 @@ def BSCChannel(x, p):
     return torch.logical_xor(x, mask).long(), torch.tensor([x.size(1)]*x.size(0), device=device)
 
 def AWGN(x, SNR):
-    sigma2 = 10**(-SNR/10)
-    noise = torch.randn(x.shape, dtype=float, device=device)
+    sigma = 10**(-SNR/20)
+    noise = sigma * torch.randn(x.shape, dtype=float, device=device)
     return x + noise, torch.tensor([x.size(1)]*x.size(0), device=device)
+
+def binaryDeletionChannel(x, p):
+    # x is of shape (N, codeword length)
+    N, code_length = x.shape
+    deletion_mask = torch.rand(x.shape, device=device) > p
+    values = x[deletion_mask]
+    lengths = torch.sum(deletion_mask, dim=1)
+    idx = 0
+    deleted_samples = torch.zeros(x.shape, device=device, dtype=float)
+    for i in range(N):
+        deleted_samples[i, :lengths[i]] = values[idx:idx+lengths[i]]
+        idx += lengths[i]
+    return deleted_samples, lengths

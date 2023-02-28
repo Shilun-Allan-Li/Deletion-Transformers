@@ -11,6 +11,31 @@ The output of the encoder should be a tensor of shape (batch, code_length)
 
 device = torch.device("cuda")
 
+class ConvEncoder(nn.Module):
+    def __init__(self, args):
+        super(ConvEncoder, self).__init__()
+        self.conv1 = nn.Conv1d(1, 256, kernel_size=5, padding=2)
+        self.conv2 = nn.Conv1d(256, 128, kernel_size=5, padding=2)
+        self.conv3 = nn.Conv1d(128, 64, kernel_size=5, padding=2)
+        self.conv4 = nn.Conv1d(64, 2, kernel_size=3, padding=1)
+        self.relu = nn.ReLU()
+        self.layernorm = nn.LayerNorm(args.code_length, elementwise_affine=False)
+        
+
+    def forward(self, x):
+        # x has size (batch, message length)
+        N, message_length = x.size(0), x.size(1)
+        x = torch.unsqueeze(x.float(), 1)
+        x = self.conv1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        x = self.relu(x)
+        x = self.conv3(x)
+        x = self.relu(x)
+        x = self.conv4(x)    
+        out = x.reshape(N, message_length*2)
+        return self.layernorm(out)
+
 class LSTMEncoder(nn.Module):
     def __init__(self, args):
         super(LSTMEncoder, self).__init__()

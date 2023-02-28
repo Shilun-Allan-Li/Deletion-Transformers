@@ -189,3 +189,35 @@ class testDecoder2(nn.Module):
         return out.transpose(0, 1)
         # out = self.conv(embedding.transpose(1, 2))
         # return out.transpose(1, 2)
+        
+class ConvDecoder(nn.Module):
+    def __init__(self, args):
+        super(ConvDecoder, self).__init__()
+        self.model = nn.Sequential(
+                      nn.Conv1d(2, 256, kernel_size=5, padding=2),
+                      nn.ReLU(),
+                      nn.Conv1d(256, 128, kernel_size=3, padding=1),
+                      nn.ReLU(),
+                      nn.Conv1d(128, 128, kernel_size=3, padding=1),
+                      nn.ReLU(),
+                      nn.Conv1d(128, 128, kernel_size=3, padding=1),
+                      nn.ReLU(),
+                      nn.Conv1d(128, 64, kernel_size=3, padding=1),
+                      nn.ReLU(),
+                      nn.Conv1d(64, 64, kernel_size=3, padding=1),
+                      nn.ReLU(),
+                      nn.Conv1d(64, 64, kernel_size=3, padding=1),
+                      nn.ReLU(),
+                      nn.Conv1d(64, 32, kernel_size=3, padding=1),
+                      nn.ReLU(),
+                      nn.Conv1d(32, 32, kernel_size=3, padding=1),
+                      nn.ReLU(),
+                      nn.Conv1d(32, 32, kernel_size=3, padding=1),
+                      nn.ReLU(),
+                      nn.Conv1d(32, 1, kernel_size=3, padding=1),
+                      nn.Sigmoid()
+                    )
+        
+    def forward(self, x):
+        x = x.float().reshape(x.size(0), 2, x.size(1)//2)
+        return self.model(x)
