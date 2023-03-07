@@ -49,10 +49,24 @@ def binaryDeletionChannel(x, p):
     deleted_samples = deleted_samples.scatter(0, idx, values).view_as(x)
     return deleted_samples, lengths
 
+# def binaryDeletionChannelSlow(x, p):
+#     # x is of shape (N, codeword length)
+#     N, code_length = x.shape
+#     deletion_mask = torch.rand(x.shape, device=device) > p
+#     values = x[deletion_mask]
+#     lengths = torch.sum(deletion_mask, dim=1)
+#     idx = 0
+#     deleted_samples = torch.zeros(x.shape, device=device, dtype=float)
+#     for i in range(N):
+#         deleted_samples[i, :lengths[i]] = values[idx:idx+lengths[i]]
+#         idx += lengths[i]
+#     return deleted_samples, lengths
+
 # import time
 # torch.manual_seed(0)
 # x = torch.randint(0, 2, (1000, 200), device=device)
 # s = time.time()
 # for i in range(100):
-#     binaryDeletionChannel(x, 0.1)
+#     binaryDeletionChannelSlow(x, 0.1)
 # print(time.time()-s)
+
