@@ -44,9 +44,15 @@ def binaryDeletionChannel(x, p):
     deletion_mask = torch.rand(x.shape, device=device) > p
     values = x[deletion_mask].float()
     lengths = torch.sum(deletion_mask, dim=1)
-    cum_lengths = torch.cumsum(lengths, 0)
     deleted_samples = torch.zeros(x.numel(), device=device)
     idx = deletion_mask.float().sort(1, True).values.view(-1).nonzero()[:, 0]
     deleted_samples = deleted_samples.scatter(0, idx, values).view_as(x)
     return deleted_samples, lengths
 
+# import time
+# torch.manual_seed(0)
+# x = torch.randint(0, 2, (1000, 200), device=device)
+# s = time.time()
+# for i in range(100):
+#     binaryDeletionChannel(x, 0.1)
+# print(time.time()-s)
