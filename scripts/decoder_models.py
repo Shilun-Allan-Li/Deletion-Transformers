@@ -214,10 +214,9 @@ class ConvDecoder(nn.Module):
                       nn.ReLU(),
                       nn.Conv1d(32, 32, kernel_size=3, padding=1),
                       nn.ReLU(),
-                      nn.Conv1d(32, 1, kernel_size=3, padding=1),
-                      nn.Sigmoid()
+                      nn.Conv1d(32, 2, kernel_size=3, padding=1)
                     )
         
     def forward(self, x):
         x = x.float().reshape(x.size(0), 2, x.size(1)//2)
-        return self.model(x)
+        return self.model(x).transpose(1, 2)

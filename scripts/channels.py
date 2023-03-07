@@ -35,14 +35,18 @@ def AWGN(x, SNR):
     return x + noise, torch.tensor([x.size(1)]*x.size(0), device=device)
 
 def binaryDeletionChannel(x, p):
+    """
+    efficient (highly parallel on CUDA) implementation of batch random deletion and selections
+
+    """
     # x is of shape (N, codeword length)
     N, code_length = x.shape
     deletion_mask = torch.rand(x.shape, device=device) > p
-    values = x[deletion_mask]
+    values = x[deletion_mask].float()
     lengths = torch.sum(deletion_mask, dim=1)
-    idx = 0
-    deleted_samples = torch.zeros(x.shape, device=device, dtype=float)
-    for i in range(N):
-        deleted_samples[i, :lengths[i]] = values[idx:idx+lengths[i]]
-        idx += lengths[i]
+    cum_lengths = torch.cumsum(lengths, 0)
+    deleted_samples = torch.zeros(x.numel(), device=device)
+    idx = deletion_mask.float().sort(1, True).values.view(-1).nonzero()[:, 0]
+    deleted_samples = deleted_samples.scatter(0, idx, values).view_as(x)
     return deleted_samples, lengths
+

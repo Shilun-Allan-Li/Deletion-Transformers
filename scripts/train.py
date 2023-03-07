@@ -16,6 +16,7 @@ from torch.optim.lr_scheduler import StepLR
 from channels import *
 from encoder_models import *
 from decoder_models import *
+from util import *
 import shutil
 
 
@@ -29,7 +30,7 @@ checkpoint_path = None
 # checkpoint_path = '../runs/32 repete 4 times/checkpoint.pt'
 
 # General
-parser.add_argument('--log_name', type=str, default="AWGN 100 to 200 SNR 6 deletion 0 Conv encoder Conv decoder",
+parser.add_argument('--log_name', type=str, default="test",
                     help='Name of the log folder (default: current time)')
 parser.add_argument('--checkpoint_load_path', type=str, default=checkpoint_path,
                     help='checkpoint path to load (default: None)')
@@ -54,7 +55,7 @@ parser.add_argument('--clip', type=float, default=1,
                     help='training grad norm clip value (default: 1.0)')
 
 # Testing args
-parser.add_argument('--eval_size', type=int, default=2048,
+parser.add_argument('--eval_size', type=int, default=4000,
                     help='total samples to test (default: 1024)')
 parser.add_argument('--eval_every', type=int, default=400,
                     help='eval every n steps (default: 1000)')
@@ -109,7 +110,7 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def train(args, encoder, decoder, E_optimizer, D_optimizer):
-    criterion = nn.BCELoss()
+    criterion = nn.CrossEntropyLoss()
     best_BER = 1
 
     encoder.train()
@@ -127,18 +128,18 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         x, src_len = AWGN(codeword_samples, args.SNR)
         # x, src_len = binaryDeletionChannel(x, args.channel_prob)
         
-        output = decoder(x)
-        output = output.squeeze()
+        output = decoder(x).contiguous()
  
-        predictions = output > 0.5
+        predictions = output.argmax(-1)
         tgt_out = message
         
+        RLD = torch.mean(editDistance(predictions, tgt_out, None).float()) / tgt_out.size(0)
         BLER = torch.mean(torch.any(predictions != tgt_out, dim=0).float())
         BER = torch.mean((predictions != tgt_out).float())
         
         output_dim = output.shape[-1]
         
-        loss = criterion(output, message.float())
+        loss = criterion(output.contiguous().view(-1, output_dim), tgt_out.contiguous().view(-1))
         loss.backward()
 
         if args.train_encoder:
@@ -148,19 +149,21 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         writer.add_scalar('train/Loss', loss.item(), step)
         writer.add_scalar('train/BLER', BLER, step)
         writer.add_scalar('train/BER', BER, step)
+        writer.add_scalar('train/RLD', RLD, step)
         
-        logger.info("[train] Step: {}/{} ({:.0f}%)\tLoss: {:.6f}\t BER: {:.6f}\t BLER: {:.6f}"
-                    .format(step, args.steps, step/args.steps*100, loss.item(), BER, BLER))
+        logger.info("[train] Step: {}/{} ({:.0f}%)\tLoss: {:.6f}\t BER: {:.6f}\t RLD: {:.6f}\t BLER: {:.6f}"
+                    .format(step, args.steps, step/args.steps*100, loss.item(), BER, RLD, BLER))
         
         if step % args.eval_every == 0:
             logger.info("evaluating...")
-            e_loss, e_BER, e_BLER = test(args, encoder, decoder)
+            e_loss, e_BER, e_BLER, e_RLD = test(args, encoder, decoder)
             writer.add_scalar('eval/Loss', e_loss, step)
             writer.add_scalar('eval/BLER', e_BLER, step)
             writer.add_scalar('eval/BER', e_BER, step)
+            writer.add_scalar('eval/RLD', e_RLD, step)
             
-            logger.info("[eval] Step: {}/{} ({:.0f}%)\tLoss: {:.6f}\t BER: {:.6f}\t BLER: {:.6f}"
-                        .format(step, args.steps, step/args.steps*100, e_loss, e_BER, e_BLER))
+            logger.info("[eval] Step: {}/{} ({:.0f}%)\tLoss: {:.6f}\t BER: {:.6f}\t RLD: {:.6f}\t BLER: {:.6f}"
+                        .format(step, args.steps, step/args.steps*100, e_loss, e_BER, e_RLD, e_BLER))
             
             if e_BER < best_BER and args.save_model:
                 logger.info("saving model...")
@@ -174,6 +177,7 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
                     'step': step,
                     'loss': e_loss,
                     'BER': e_BER,
+                    'RLD': e_RLD,
                     'BLER': e_BLER,
                     }
                 checkpoint_file = os.path.join(log_dir, "checkpoint.pt")
@@ -185,12 +189,12 @@ def test(args, encoder, decoder):
     pad_token = args.alphabet_size
     bos_token = args.alphabet_size + 1
     vocab_size = args.alphabet_size + 2
-    criterion = nn.BCELoss()
+    criterion = nn.CrossEntropyLoss()
     
     encoder.eval()
     decoder.eval()
     
-    losses, BERs, BLERs = [], [], []
+    losses, BERs, BLERs, RLDs = [], [], [], []
     
     with torch.no_grad():
         for step in range(args.eval_size // args.batch_size):
@@ -203,29 +207,29 @@ def test(args, encoder, decoder):
             x, src_len = AWGN(codeword_samples, args.SNR)
             # x, src_len = binaryDeletionChannel(x, args.channel_prob)
             
-            output = decoder(x)
-            output = output.squeeze()
+            output = decoder(x).contiguous()
      
-            predictions = output > 0.5
+            predictions = output.argmax(-1)
+            tgt_out = message
             
-            tgt = message
-
-            BLER = torch.mean(torch.any(predictions != tgt, dim=0).float())
-            BER = torch.mean((predictions != tgt).float())
+            RLD = torch.mean(editDistance(predictions, tgt_out, None).float()) / tgt_out.size(0)
+            BLER = torch.mean(torch.any(predictions != tgt_out, dim=0).float())
+            BER = torch.mean((predictions != tgt_out).float())
             
             output_dim = output.shape[-1]
             
-            loss = criterion(output.squeeze(), message.float())
+            loss = criterion(output.contiguous().view(-1, output_dim), tgt_out.contiguous().view(-1))
             
             losses.append(loss.item())
             BLERs.append(BLER.cpu())
             BERs.append(BER.cpu())
+            RLDs.append(RLD.cpu())
             
     if args.train_encoder:
             encoder.train()
     decoder.train()
 
-    return np.mean(losses), np.mean(BERs), np.mean(BLERs)
+    return np.mean(losses), np.mean(BERs), np.mean(BLERs), np.mean(RLDs)
             
 
 def main(args):
