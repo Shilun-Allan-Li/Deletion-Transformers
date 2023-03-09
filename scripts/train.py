@@ -8,15 +8,11 @@ import torch
 import argparse
 import random
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-from collections import defaultdict
 from torch.utils.tensorboard import SummaryWriter
-from torch.optim.lr_scheduler import StepLR
-from channels import *
-from encoder_models import *
-from decoder_models import *
-from util import *
+import channels
+import autoencoders
+from util import editDistance, count_parameters
 import shutil
 
 
@@ -42,7 +38,7 @@ parser.add_argument('--message_length', type=int, default=100,
                     help='Length message (default: 64)')
 parser.add_argument('--channel_prob', type=float, default=0,
                     help='Probability of channel (default: 0.05)')
-parser.add_argument('--SNR', type=float, default=6,
+parser.add_argument('--SNR', type=float, default=3,
                     help='SNR of AWGN channel (default: 0.0)')
 
 
@@ -71,12 +67,12 @@ parser.add_argument('--train_encoder', type=bool, default=True,
 # Decoder args
 parser.add_argument('--decoder_lr', type=float, default=1e-5, metavar='DLR',
                     help='learning rate (default: 1e-3)')
-parser.add_argument('--decoder_e_hidden', type=int, default=8,
-                    help='decoder hidden size (default: 8)')
-parser.add_argument('--decoder_d_hidden', type=int, default=16,
-                    help='decoder hidden size (default: 16)')
-parser.add_argument('--decoder_forward', type=int, default=32,
-                    help='decoder feed forward size (default: 32)')
+# parser.add_argument('--decoder_e_hidden', type=int, default=8,
+#                     help='decoder hidden size (default: 8)')
+# parser.add_argument('--decoder_d_hidden', type=int, default=16,
+#                     help='decoder hidden size (default: 16)')
+# parser.add_argument('--decoder_forward', type=int, default=32,
+#                     help='decoder feed forward size (default: 32)')
 
 # Output
 parser.add_argument('--save_model', action='store_true', default=True,
@@ -105,16 +101,11 @@ logging.basicConfig(level=logging.INFO, format=FORMAT, handlers=[file_handler, s
 logger = logging.getLogger(__name__)
 
 
-
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-def train(args, encoder, decoder, E_optimizer, D_optimizer):
+def train(args, AE_model, E_optimizer, D_optimizer):
     criterion = nn.CrossEntropyLoss()
     best_BER = 1
 
-    encoder.train()
-    decoder.train()
+    AE_model.train()
     for step in range(1, args.steps+1):
         if args.train_encoder:
             E_optimizer.zero_grad()
@@ -122,24 +113,17 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         
         message = torch.randint(0, args.alphabet_size, (args.batch_size, args.message_length), device=device)
         
-        codeword = encoder(torch.pow(-1, message))
-        codeword_samples = codeword
-        
-        x, src_len = AWGN(codeword_samples, args.SNR)
-        # x, src_len = binaryDeletionChannel(x, args.channel_prob)
-        
-        output = decoder(x).contiguous()
+        output = AE_model(message).contiguous()
  
         predictions = output.argmax(-1)
-        tgt_out = message
         
-        RLD = torch.mean(editDistance(predictions, tgt_out, None).float()) / tgt_out.size(0)
-        BLER = torch.mean(torch.any(predictions != tgt_out, dim=0).float())
-        BER = torch.mean((predictions != tgt_out).float())
+        RLD = torch.mean(editDistance(predictions, message, None).float()) / message.size(1)
+        BLER = torch.mean(torch.any(predictions != message, dim=0).float())
+        BER = torch.mean((predictions != message).float())
         
         output_dim = output.shape[-1]
         
-        loss = criterion(output.contiguous().view(-1, output_dim), tgt_out.contiguous().view(-1))
+        loss = criterion(output.contiguous().view(-1, output_dim), message.view(-1))
         loss.backward()
 
         if args.train_encoder:
@@ -156,7 +140,7 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
         
         if step % args.eval_every == 0:
             logger.info("evaluating...")
-            e_loss, e_BER, e_BLER, e_RLD = test(args, encoder, decoder)
+            e_loss, e_BER, e_BLER, e_RLD = test(args, AE_model)
             writer.add_scalar('eval/Loss', e_loss, step)
             writer.add_scalar('eval/BLER', e_BLER, step)
             writer.add_scalar('eval/BER', e_BER, step)
@@ -170,10 +154,10 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
                 best_BER = e_BER
                 checkpoint = {
                     'args': args.__dict__,
-                    'encoder_name': encoder.__class__.__name__,
-                    'encoder_state': encoder.state_dict(),
-                    'decoder_name': decoder.__class__.__name__,
-                    'decoder_state': decoder.state_dict(),
+                    'encoder_name': AE_model.encoder.__class__.__name__,
+                    'encoder_state': AE_model.encoder.state_dict(),
+                    'decoder_name': AE_model.decoder.__class__.__name__,
+                    'decoder_state': AE_model.decoder.state_dict(),
                     'step': step,
                     'loss': e_loss,
                     'BER': e_BER,
@@ -183,51 +167,39 @@ def train(args, encoder, decoder, E_optimizer, D_optimizer):
                 checkpoint_file = os.path.join(log_dir, "checkpoint.pt")
                 torch.save(checkpoint, checkpoint_file)
                 logger.info("model saved to {}".format(checkpoint_file))
+            AE_model.train()
                 
 
-def test(args, encoder, decoder):
+def test(args, AE_model):
     pad_token = args.alphabet_size
     bos_token = args.alphabet_size + 1
     vocab_size = args.alphabet_size + 2
     criterion = nn.CrossEntropyLoss()
     
-    encoder.eval()
-    decoder.eval()
+    AE_model.eval()
     
     losses, BERs, BLERs, RLDs = [], [], [], []
     
     with torch.no_grad():
         for step in range(args.eval_size // args.batch_size):
             message = torch.randint(0, args.alphabet_size, (args.batch_size, args.message_length), device=device)
-            
-            """test AWGN"""
-            codeword = encoder(torch.pow(-1, message))
-            codeword_samples = codeword
-            
-            x, src_len = AWGN(codeword_samples, args.SNR)
-            # x, src_len = binaryDeletionChannel(x, args.channel_prob)
-            
-            output = decoder(x).contiguous()
+              
+            output = AE_model.predict(message).contiguous()
      
             predictions = output.argmax(-1)
-            tgt_out = message
             
-            RLD = torch.mean(editDistance(predictions, tgt_out, None).float()) / tgt_out.size(0)
-            BLER = torch.mean(torch.any(predictions != tgt_out, dim=0).float())
-            BER = torch.mean((predictions != tgt_out).float())
+            RLD = torch.mean(editDistance(predictions, message, None).float()) / message.size(1)
+            BLER = torch.mean(torch.any(predictions != message, dim=0).float())
+            BER = torch.mean((predictions != message).float())
             
             output_dim = output.shape[-1]
             
-            loss = criterion(output.contiguous().view(-1, output_dim), tgt_out.contiguous().view(-1))
+            loss = criterion(output.contiguous().view(-1, output_dim), message.view(-1))
             
             losses.append(loss.item())
             BLERs.append(BLER.cpu())
             BERs.append(BER.cpu())
             RLDs.append(RLD.cpu())
-            
-    if args.train_encoder:
-            encoder.train()
-    decoder.train()
 
     return np.mean(losses), np.mean(BERs), np.mean(BLERs), np.mean(RLDs)
             
@@ -244,8 +216,11 @@ def main(args):
     
     logger.info('Training on {} datapoints with {} steps and batchsize {}'.format(args.steps*args.batch_size, args.steps, args.batch_size))
 
-    encoder = ConvEncoder(args).to(device)
-    decoder = ConvDecoder(args).to(device)
+    channel = lambda x: channels.binaryDeletionChannel(channels.AWGN(x, args.SNR)[0], args.channel_prob)
+    
+    AE_model = autoencoders.ConvAE(args, channel).to(device)
+    encoder = AE_model.encoder
+    decoder = AE_model.decoder
             
     if args.checkpoint_load_path is not None:
         logger.info("loading checkpoint from {}".format(args.checkpoint_load_path))
@@ -264,8 +239,8 @@ def main(args):
     else:
         E_optimizer = None
     D_optimizer = optim.Adam(decoder.parameters(), lr=args.decoder_lr)
-    train(args, encoder, decoder, E_optimizer, D_optimizer)
-    test(args, encoder, decoder)
+    train(args, AE_model, E_optimizer, D_optimizer)
+    test(args, AE_model)
 
 
 if __name__ == '__main__':
