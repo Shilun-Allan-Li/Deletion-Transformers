@@ -3,8 +3,8 @@ import math
 import torch
 from torch import nn, Tensor
 import torch.nn.functional as F
-# from custom_transformers import Transformer
-from torch.nn import Transformer
+from custom_transformers import Transformer
+# from torch.nn import Transformer
 import random
 
 
@@ -27,8 +27,8 @@ class Seq2SeqTransformer(nn.Module):
         self.transformer =  Transformer(d_model=emb_size,
                                         nhead=nhead,
                                         activation='relu',
-                                        num_encoder_layers=3,
-                                        num_decoder_layers=3,
+                                        num_encoder_layers=1,
+                                        num_decoder_layers=1,
                                         dim_feedforward=8,
                                         dropout=dropout)
         self.generator = nn.Linear(emb_size, output_dim)

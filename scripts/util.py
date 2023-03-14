@@ -70,7 +70,7 @@ def greedy_decode(message_length, model, src, bos_token, pad_token, independent)
         # receive output tensor (predictions) and new hidden state
         
         # use when target bits are independent
-        tgt_mask = create_mask(tgt=ys, independent=independent)
+        _, tgt_mask, _, _ = create_mask(tgt=ys, independent=independent)
         
         # tgt_mask = None
         features = model.decode(ys, memory, tgt_mask)
