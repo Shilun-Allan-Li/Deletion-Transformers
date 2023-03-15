@@ -121,11 +121,9 @@ class CvtEmbeddings(nn.Module):
         self.convolution_embeddings = CvtConvEmbeddings(
             patch_size=patch_size, num_channels=num_channels, embed_dim=embed_dim, stride=stride, padding=padding
         )
-        self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, pixel_values):
         hidden_state = self.convolution_embeddings(pixel_values)
-        hidden_state = self.dropout(hidden_state)
         return hidden_state
 
 
@@ -139,7 +137,6 @@ class CvtConvEmbeddings(nn.Module):
         patch_size = patch_size if isinstance(patch_size, collections.abc.Iterable) else (patch_size, patch_size)
         self.patch_size = patch_size
         self.projection = nn.Conv2d(num_channels, embed_dim, kernel_size=patch_size, stride=stride, padding=padding)
-        # self.normalization = nn.LayerNorm(embed_dim)
 
     def forward(self, pixel_values):
         pixel_values = self.projection(pixel_values)
@@ -147,8 +144,7 @@ class CvtConvEmbeddings(nn.Module):
         hidden_size = height * width
         # rearrange "b c h w -> b (h w) c"
         pixel_values = pixel_values.view(batch_size, num_channels, hidden_size).permute(0, 2, 1)
-        # if self.normalization:
-        #     pixel_values = self.normalization(pixel_values)
+
         # rearrange "b (h w) c" -> b c h w"
         pixel_values = pixel_values.permute(0, 2, 1).view(batch_size, num_channels, height, width)
         return pixel_values
@@ -166,11 +162,9 @@ class CvtSelfAttentionConvProjection(nn.Module):
             bias=False,
             groups=embed_dim,
         )
-        # self.normalization = nn.BatchNorm2d(embed_dim)
 
     def forward(self, hidden_state):
         hidden_state = self.convolution(hidden_state)
-        # hidden_state = self.normalization(hidden_state)
         return hidden_state
 
 
@@ -236,7 +230,6 @@ class CvtSelfAttention(nn.Module):
         self.projection_key = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
         self.projection_value = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
 
-        self.dropout = nn.Dropout(attention_drop_rate)
 
     def rearrange_for_multi_head_attention(self, hidden_state):
         batch_size, hidden_size, _ = hidden_state.shape
@@ -268,7 +261,6 @@ class CvtSelfAttention(nn.Module):
 
         attention_score = torch.einsum("bhlk,bhtk->bhlt", [query, key]) * self.scale
         attention_probs = torch.nn.functional.softmax(attention_score, dim=-1)
-        attention_probs = self.dropout(attention_probs)
 
         context = torch.einsum("bhlt,bhtv->bhlv", [attention_probs, value])
         # rearrange"b h t d -> b t (h d)"
@@ -286,11 +278,9 @@ class CvtSelfOutput(nn.Module):
     def __init__(self, embed_dim, drop_rate):
         super().__init__()
         self.dense = nn.Linear(embed_dim, embed_dim)
-        self.dropout = nn.Dropout(drop_rate)
 
     def forward(self, hidden_state, input_tensor):
         hidden_state = self.dense(hidden_state)
-        hidden_state = self.dropout(hidden_state)
         return hidden_state
 
 
@@ -367,11 +357,9 @@ class CvtOutput(nn.Module):
     def __init__(self, embed_dim, mlp_ratio, drop_rate):
         super().__init__()
         self.dense = nn.Linear(int(embed_dim * mlp_ratio), embed_dim)
-        self.dropout = nn.Dropout(drop_rate)
 
     def forward(self, hidden_state, input_tensor):
         hidden_state = self.dense(hidden_state)
-        hidden_state = self.dropout(hidden_state)
         hidden_state = hidden_state + input_tensor
         return hidden_state
 
@@ -417,12 +405,10 @@ class CvtLayer(nn.Module):
         self.intermediate = CvtIntermediate(embed_dim, mlp_ratio)
         self.output = CvtOutput(embed_dim, mlp_ratio, drop_rate)
         self.drop_path = CvtDropPath(drop_prob=drop_path_rate) if drop_path_rate > 0.0 else nn.Identity()
-        # self.layernorm_before = nn.LayerNorm(embed_dim)
-        # self.layernorm_after = nn.LayerNorm(embed_dim)
 
     def forward(self, hidden_state, height, width):
         self_attention_output = self.attention(
-            hidden_state,  # in Cvt, layernorm is applied before self-attention
+            hidden_state,
             height,
             width,
         )
@@ -432,10 +418,7 @@ class CvtLayer(nn.Module):
         # first residual connection
         hidden_state = attention_output + hidden_state
 
-        # in Cvt, layernorm is also applied after self-attention
-        
         layer_output = hidden_state
-        # layer_output = self.layernorm_after(hidden_state)
         
         layer_output = self.intermediate(layer_output)
 
@@ -459,7 +442,7 @@ class CvtStage(nn.Module):
             num_channels=config.num_channels if self.stage == 0 else config.embed_dim[self.stage - 1],
             embed_dim=config.embed_dim[self.stage],
             padding=config.patch_padding[self.stage],
-            dropout_rate=config.drop_rate[self.stage],
+            dropout_rate=None,
         )
 
         drop_path_rates = [x.item() for x in torch.linspace(0, config.drop_path_rate[self.stage], config.depth[stage])]
