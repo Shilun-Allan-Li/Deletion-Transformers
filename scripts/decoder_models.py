@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from custom_transformers import Transformer
 # from torch.nn import Transformer
 import random
+from transformers import CvtConfig
+from custom_Cvt import CvtModel
 
 
 """
@@ -15,6 +17,25 @@ The output of the decoder should be a tensor of shape (batch, message_length, lo
 
 device = torch.device("cuda")
 
+class CvtDecoder(nn.Module):
+    def __init__(self, args):
+        super(CvtDecoder, self).__init__()
+        configuration = CvtConfig(num_channels=1, embed_dim=[64, 192, args.message_length], num_heads=[1, 3, 5])
+        self.model = CvtModel(configuration)
+        self.linear = nn.Linear(13, 2)
+        
+    def forward(self, x):
+        x = F.pad(x.unsqueeze(-1), (1, 1), 'constant', 0)
+        x = x.unsqueeze(1)
+        output = self.model(x, return_dict=True)['last_hidden_state']
+        output = output.squeeze()
+        logits = self.linear(output)
+        return logits
+        
+# x = torch.rand(10, 200).to(device)
+# model = CvtDecoder(None, None).to(device)
+# model(x)
+        
 class Seq2SeqTransformer(nn.Module):
     def __init__(self, args, output_dim):
         super(Seq2SeqTransformer, self).__init__()
@@ -35,7 +56,7 @@ class Seq2SeqTransformer(nn.Module):
         self.src_tok_emb = nn.Linear(1, emb_size)
         self.tgt_tok_emb = nn.Embedding(tgt_vocabsize, emb_size)
 
-    def forward(self,
+    def forward(self, 
                 src: Tensor,
                 trg: Tensor,
                 src_mask: Tensor,

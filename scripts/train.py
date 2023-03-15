@@ -118,7 +118,7 @@ def train(args, AE_model, E_optimizer, D_optimizer):
         predictions = output.argmax(-1)
         
         RLD = torch.mean(editDistance(predictions, message, None).float()) / message.size(1)
-        BLER = torch.mean(torch.any(predictions != message, dim=0).float())
+        BLER = torch.mean(torch.any(predictions != message, dim=1).float())
         BER = torch.mean((predictions != message).float())
         
         output_dim = output.shape[-1]
@@ -189,7 +189,7 @@ def test(args, AE_model):
             predictions = output.argmax(-1)
             
             RLD = torch.mean(editDistance(predictions, message, None).float()) / message.size(1)
-            BLER = torch.mean(torch.any(predictions != message, dim=0).float())
+            BLER = torch.mean(torch.any(predictions != message, dim=1).float())
             BER = torch.mean((predictions != message).float())
             
             output_dim = output.shape[-1]
@@ -219,7 +219,9 @@ def main(args):
     channel = lambda x: channels.binaryDeletionChannel(channels.AWGN(x, args.SNR)[0], args.channel_prob)
     
     # AE_model = autoencoders.ConvAE(args, channel).to(device)
-    AE_model = autoencoders.ConvTransformerAE(args, channel).to(device)
+    # AE_model = autoencoders.ConvTransformerAE(args, channel).to(device)
+    AE_model = autoencoders.ConvCvtAE(args, channel).to(device)
+    
     encoder = AE_model.encoder
     decoder = AE_model.decoder
 

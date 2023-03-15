@@ -9,6 +9,23 @@ from util import create_mask, greedy_decode
 
 device = torch.device("cuda")
 
+class ConvCvtAE(nn.Module):
+    def __init__(self, args, channel):
+        super(ConvCvtAE, self).__init__()
+        self.encoder = encoder_models.ConvEncoder(args)
+        self.decoder = decoder_models.CvtDecoder(args)
+        self.channel = channel
+
+
+    def forward(self, message):
+        codeword = self.encoder(torch.pow(-1, message))
+        x, src_len = self.channel(codeword) 
+        output = self.decoder(x)
+        return output
+    
+    def predict(self, message):
+        return self.forward(message)
+
 class ConvAE(nn.Module):
     def __init__(self, args, channel):
         super(ConvAE, self).__init__()
