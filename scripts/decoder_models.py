@@ -20,21 +20,41 @@ device = torch.device("cuda")
 class CvtDecoder(nn.Module):
     def __init__(self, args):
         super(CvtDecoder, self).__init__()
-        configuration = CvtConfig(num_channels=1, embed_dim=[64, 192, args.message_length], num_heads=[1, 3, 5])
+        num_states = 5
+        configuration = CvtConfig(
+                                num_channels=2,
+                                patch_sizes=[5, 3, 3, 3, 3],
+                                patch_stride=[1] * num_states,
+                                patch_padding=[2, 1, 1, 1, 1],
+                                embed_dim=[256, 128, 64, 32, 2],
+                                num_heads=[1, 2, 4, 4, 2],
+                                depth=[1, 3, 3, 3, 1],
+                                mlp_ratio=[1.0] * num_states,
+                                attention_drop_rate=[0.0] * num_states,
+                                drop_rate=[0.0] * num_states,
+                                drop_path_rate=[0.0] * num_states,
+                                qkv_bias=[True] * num_states,
+                                cls_token=[False] * num_states,
+                                qkv_projection_method=["dw_bn"] * num_states,
+                                kernel_qkv=[3] * num_states,
+                                padding_kv=[1] * num_states,
+                                stride_kv=[2] * num_states,
+                                padding_q=[1] * num_states,
+                                stride_q=[1] * num_states,
+                                initializer_range=0.02,
+                                layer_norm_eps=None
+                                )
         self.model = CvtModel(configuration)
-        self.linear = nn.Linear(13, 2)
         
     def forward(self, x):
-        x = F.pad(x.unsqueeze(-1), (1, 1), 'constant', 0)
-        x = x.unsqueeze(1)
+        x = x.float().view(x.size(0), 2, x.size(1)//2)
         output = self.model(x, return_dict=True)['last_hidden_state']
-        output = output.squeeze()
-        logits = self.linear(output)
+        logits = output.transpose(1, 2)
         return logits
         
 # x = torch.rand(10, 200).to(device)
-# model = CvtDecoder(None, None).to(device)
-# model(x)
+# model = CvtDecoder(None).to(device)
+# output = model(x)
         
 class Seq2SeqTransformer(nn.Module):
     def __init__(self, args, output_dim):

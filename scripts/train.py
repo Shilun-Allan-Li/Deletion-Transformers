@@ -26,7 +26,7 @@ checkpoint_path = None
 # checkpoint_path = '../runs/32 repete 4 times/checkpoint.pt'
 
 # General
-parser.add_argument('--log_name', type=str, default="test",
+parser.add_argument('--log_name', type=str, default="test2",
                     help='Name of the log folder (default: current time)')
 parser.add_argument('--checkpoint_load_path', type=str, default=checkpoint_path,
                     help='checkpoint path to load (default: None)')
@@ -38,7 +38,7 @@ parser.add_argument('--message_length', type=int, default=100,
                     help='Length message (default: 64)')
 parser.add_argument('--channel_prob', type=float, default=0,
                     help='Probability of channel (default: 0.05)')
-parser.add_argument('--SNR', type=float, default=3,
+parser.add_argument('--SNR', type=float, default=4,
                     help='SNR of AWGN channel (default: 0.0)')
 
 
@@ -57,15 +57,15 @@ parser.add_argument('--eval_every', type=int, default=400,
                     help='eval every n steps (default: 1000)')
 
 # Encoder args
-parser.add_argument('--encoder_lr', type=float, default=1e-3, metavar='ELR',
+parser.add_argument('--encoder_lr', type=float, default=1e-4, metavar='ELR',
                     help='learning rate (default: 0.001)')
-parser.add_argument('--train_encoder', type=bool, default=False,
+parser.add_argument('--train_encoder', type=bool, default=True,
                     help='Whether the encoder requires training (default: False)')
 # parser.add_argument('--encoder_hidden', type=int, default=128,
 #                     help='hidden layer dimension of encoder (default: 128)')
 
 # Decoder args
-parser.add_argument('--decoder_lr', type=float, default=1e-3, metavar='DLR',
+parser.add_argument('--decoder_lr', type=float, default=1e-4, metavar='DLR',
                     help='learning rate (default: 1e-3)')
 # parser.add_argument('--decoder_e_hidden', type=int, default=8,
 #                     help='decoder hidden size (default: 8)')
@@ -218,24 +218,26 @@ def main(args):
 
     channel = lambda x: channels.binaryDeletionChannel(channels.AWGN(x, args.SNR)[0], args.channel_prob)
     
-    # AE_model = autoencoders.ConvAE(args, channel).to(device)
+    AE_model = autoencoders.CvtCvtAE(args, channel).to(device)
+    # AE_model = autoencoders.ConvConvAE(args, channel).to(device)
     # AE_model = autoencoders.ConvTransformerAE(args, channel).to(device)
-    AE_model = autoencoders.ConvCvtAE(args, channel).to(device)
+    # AE_model = autoencoders.ConvCvtAE(args, channel).to(device)
     
     encoder = AE_model.encoder
     decoder = AE_model.decoder
 
-    encoder.load_state_dict(torch.load('../runs/AWGN 100 to 200 SNR 3 Conv encoder Conv decoder/checkpoint.pt')['encoder_state'])
+    # encoder.load_state_dict(torch.load('../runs/Cvt encoder Cvt decoder AWGN 100 to 200 SNR 6 deletion 0/checkpoint.pt')['encoder_state'])
+    # decoder.load_state_dict(torch.load('../runs/Cvt encoder Cvt decoder AWGN 100 to 200 SNR 6 deletion 0/checkpoint.pt')['decoder_state'])
             
-    # if args.checkpoint_load_path is not None:
-    #     logger.info("loading checkpoint from {}".format(args.checkpoint_load_path))
-    #     checkpoint = torch.load(args.checkpoint_load_path)
-    #     assert encoder.__class__.__name__ == checkpoint['encoder_name']
-    #     assert decoder.__class__.__name__ == checkpoint['decoder_name']
-    #     encoder.load_state_dict(checkpoint['encoder_state'])
-    #     decoder.load_state_dict(checkpoint['decoder_state'])
-    #     logger.info("checkpoint loaded step: {}, Loss: {}, BER: {}, BLER: {}"
-    #                 .format(checkpoint['step'], checkpoint['loss'], checkpoint['BER'], checkpoint['BLER']))
+    if args.checkpoint_load_path is not None:
+        logger.info("loading checkpoint from {}".format(args.checkpoint_load_path))
+        checkpoint = torch.load(args.checkpoint_load_path)
+        assert encoder.__class__.__name__ == checkpoint['encoder_name']
+        assert decoder.__class__.__name__ == checkpoint['decoder_name']
+        encoder.load_state_dict(checkpoint['encoder_state'])
+        decoder.load_state_dict(checkpoint['decoder_state'])
+        logger.info("checkpoint loaded step: {}, Loss: {}, BER: {}, BLER: {}"
+                    .format(checkpoint['step'], checkpoint['loss'], checkpoint['BER'], checkpoint['BLER']))
             
     logger.info("The encoder has {} trainable parameters.".format(count_parameters(encoder)))
     logger.info("The decoder has {} trainable parameters.".format(count_parameters(decoder)))

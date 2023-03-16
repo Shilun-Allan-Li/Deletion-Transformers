@@ -134,26 +134,25 @@ class CvtConvEmbeddings(nn.Module):
 
     def __init__(self, patch_size, num_channels, embed_dim, stride, padding):
         super().__init__()
-        patch_size = patch_size if isinstance(patch_size, collections.abc.Iterable) else (patch_size, patch_size)
         self.patch_size = patch_size
-        self.projection = nn.Conv2d(num_channels, embed_dim, kernel_size=patch_size, stride=stride, padding=padding)
+        self.projection = nn.Conv1d(num_channels, embed_dim, kernel_size=patch_size, stride=stride, padding=padding)
 
     def forward(self, pixel_values):
         pixel_values = self.projection(pixel_values)
-        batch_size, num_channels, height, width = pixel_values.shape
-        hidden_size = height * width
+        batch_size, num_channels, length = pixel_values.shape
+        hidden_size = length
         # rearrange "b c h w -> b (h w) c"
         pixel_values = pixel_values.view(batch_size, num_channels, hidden_size).permute(0, 2, 1)
 
         # rearrange "b (h w) c" -> b c h w"
-        pixel_values = pixel_values.permute(0, 2, 1).view(batch_size, num_channels, height, width)
+        pixel_values = pixel_values.permute(0, 2, 1).view(batch_size, num_channels, length)
         return pixel_values
 
 
 class CvtSelfAttentionConvProjection(nn.Module):
     def __init__(self, embed_dim, kernel_size, padding, stride):
         super().__init__()
-        self.convolution = nn.Conv2d(
+        self.convolution = nn.Conv1d(
             embed_dim,
             embed_dim,
             kernel_size=kernel_size,
@@ -170,8 +169,8 @@ class CvtSelfAttentionConvProjection(nn.Module):
 
 class CvtSelfAttentionLinearProjection(nn.Module):
     def forward(self, hidden_state):
-        batch_size, num_channels, height, width = hidden_state.shape
-        hidden_size = height * width
+        batch_size, num_channels, length = hidden_state.shape
+        hidden_size = length
         # rearrange " b c h w -> b (h w) c"
         hidden_state = hidden_state.view(batch_size, num_channels, hidden_size).permute(0, 2, 1)
         return hidden_state
@@ -237,12 +236,12 @@ class CvtSelfAttention(nn.Module):
         # rearrange 'b t (h d) -> b h t d'
         return hidden_state.view(batch_size, hidden_size, self.num_heads, head_dim).permute(0, 2, 1, 3)
 
-    def forward(self, hidden_state, height, width):
+    def forward(self, hidden_state, length):
         if self.with_cls_token:
-            cls_token, hidden_state = torch.split(hidden_state, [1, height * width], 1)
+            cls_token, hidden_state = torch.split(hidden_state, [1, length], 1)
         batch_size, hidden_size, num_channels = hidden_state.shape
         # rearrange "b (h w) c -> b c h w"
-        hidden_state = hidden_state.permute(0, 2, 1).view(batch_size, num_channels, height, width)
+        hidden_state = hidden_state.permute(0, 2, 1).view(batch_size, num_channels, length)
 
         key = self.convolution_projection_key(hidden_state)
         query = self.convolution_projection_query(hidden_state)
@@ -335,8 +334,8 @@ class CvtAttention(nn.Module):
         self.attention.all_head_size = self.attention.attention_head_size * self.attention.num_attention_heads
         self.pruned_heads = self.pruned_heads.union(heads)
 
-    def forward(self, hidden_state, height, width):
-        self_output = self.attention(hidden_state, height, width)
+    def forward(self, hidden_state, length):
+        self_output = self.attention(hidden_state, length)
         attention_output = self.output(self_output, hidden_state)
         return attention_output
 
@@ -406,11 +405,10 @@ class CvtLayer(nn.Module):
         self.output = CvtOutput(embed_dim, mlp_ratio, drop_rate)
         self.drop_path = CvtDropPath(drop_prob=drop_path_rate) if drop_path_rate > 0.0 else nn.Identity()
 
-    def forward(self, hidden_state, height, width):
+    def forward(self, hidden_state, length):
         self_attention_output = self.attention(
             hidden_state,
-            height,
-            width,
+            length
         )
         attention_output = self_attention_output
         attention_output = self.drop_path(attention_output)
@@ -461,31 +459,31 @@ class CvtStage(nn.Module):
                     qkv_bias=config.qkv_bias[self.stage],
                     attention_drop_rate=config.attention_drop_rate[self.stage],
                     drop_rate=config.drop_rate[self.stage],
-                    drop_path_rate=drop_path_rates[self.stage],
+                    drop_path_rate=drop_path_rates[i],
                     mlp_ratio=config.mlp_ratio[self.stage],
                     with_cls_token=config.cls_token[self.stage],
                 )
-                for _ in range(config.depth[self.stage])
+                for i in range(config.depth[self.stage])
             ]
         )
 
     def forward(self, hidden_state):
         cls_token = None
         hidden_state = self.embedding(hidden_state)
-        batch_size, num_channels, height, width = hidden_state.shape
+        batch_size, num_channels, length = hidden_state.shape
         # rearrange b c h w -> b (h w) c"
-        hidden_state = hidden_state.view(batch_size, num_channels, height * width).permute(0, 2, 1)
+        hidden_state = hidden_state.view(batch_size, num_channels, length).permute(0, 2, 1)
         if self.config.cls_token[self.stage]:
             cls_token = self.cls_token.expand(batch_size, -1, -1)
             hidden_state = torch.cat((cls_token, hidden_state), dim=1)
 
         for layer in self.layers:
-            layer_outputs = layer(hidden_state, height, width)
+            layer_outputs = layer(hidden_state, length)
             hidden_state = layer_outputs
 
         if self.config.cls_token[self.stage]:
-            cls_token, hidden_state = torch.split(hidden_state, [1, height * width], 1)
-        hidden_state = hidden_state.permute(0, 2, 1).view(batch_size, num_channels, height, width)
+            cls_token, hidden_state = torch.split(hidden_state, [1, length], 1)
+        hidden_state = hidden_state.permute(0, 2, 1).view(batch_size, num_channels, length)
         return hidden_state, cls_token
 
 

@@ -3,6 +3,8 @@ import math
 import torch
 from torch import nn, Tensor
 import torch.nn.functional as F
+from transformers import CvtConfig
+from custom_Cvt import CvtModel
 
 """
 The input to the encoder is tensor of shape (batch, message_length) and Long type on cuda
@@ -10,6 +12,43 @@ The output of the encoder should be a tensor of shape (batch, code_length)
 """
 
 device = torch.device("cuda")
+
+class CvtEncoder(nn.Module):
+    def __init__(self, args):
+        super(CvtEncoder, self).__init__()
+        num_states = 4
+        configuration = CvtConfig(
+                                num_channels=1,
+                                patch_sizes=[5, 5, 5, 3],
+                                patch_stride=[1] * num_states,
+                                patch_padding=[2, 2, 2, 1],
+                                embed_dim=[256, 128, 64, 2],
+                                num_heads=[1, 2, 4, 2],
+                                depth=[1, 2, 1, 1],
+                                mlp_ratio=[1.0] * num_states,
+                                attention_drop_rate=[0.0] * num_states,
+                                drop_rate=[0.0] * num_states,
+                                drop_path_rate=[0.0] * num_states,
+                                qkv_bias=[True] * num_states,
+                                cls_token=[False] * num_states,
+                                qkv_projection_method=["dw_bn"] * num_states,
+                                kernel_qkv=[3] * num_states,
+                                padding_kv=[1] * num_states,
+                                stride_kv=[2] * num_states,
+                                padding_q=[1] * num_states,
+                                stride_q=[1] * num_states,
+                                initializer_range=0.02,
+                                layer_norm_eps=None
+                                )
+        self.model = CvtModel(configuration)
+        self.layernorm = nn.LayerNorm(args.code_length, elementwise_affine=False)
+        
+    def forward(self, x):
+        N, message_length = x.size(0), x.size(1)
+        x = x.float().unsqueeze(1)
+        out = self.model(x, return_dict=True)['last_hidden_state']
+        out = out.reshape(N, message_length*2)
+        return self.layernorm(out)
 
 class ConvEncoder(nn.Module):
     def __init__(self, args):
