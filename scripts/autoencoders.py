@@ -26,6 +26,10 @@ class CvtCvtAE(nn.Module):
     
     def predict(self, message):
         return self.forward(message)
+    
+    def codeword(self, message):
+        return self.encoder(torch.pow(-1, message))
+
 
 class ConvCvtAE(nn.Module):
     def __init__(self, args, channel):
@@ -43,6 +47,10 @@ class ConvCvtAE(nn.Module):
     
     def predict(self, message):
         return self.forward(message)
+    
+    def codeword(self, message):
+        return self.encoder(torch.pow(-1, message))
+
 
 class ConvConvAE(nn.Module):
     def __init__(self, args, channel):
@@ -61,7 +69,9 @@ class ConvConvAE(nn.Module):
     def predict(self, message):
         return self.forward(message)
     
-
+    def codeword(self, message):
+        return self.encoder(torch.pow(-1, message))
+    
 
 class ConvTransformerAE(nn.Module):
     def __init__(self, args, channel):
@@ -98,3 +108,6 @@ class ConvTransformerAE(nn.Module):
         
         output = greedy_decode(self.message_length, self.decoder, src, self.bos_token, pad_token=0, independent=True)
         return output.transpose(0, 1)
+    
+    def codeword(self, message):
+        return self.encoder(torch.pow(-1, message))

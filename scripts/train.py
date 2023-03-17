@@ -26,7 +26,7 @@ checkpoint_path = None
 # checkpoint_path = '../runs/32 repete 4 times/checkpoint.pt'
 
 # General
-parser.add_argument('--log_name', type=str, default="test2",
+parser.add_argument('--log_name', type=str, default="test",
                     help='Name of the log folder (default: current time)')
 parser.add_argument('--checkpoint_load_path', type=str, default=checkpoint_path,
                     help='checkpoint path to load (default: None)')
@@ -61,18 +61,11 @@ parser.add_argument('--encoder_lr', type=float, default=1e-4, metavar='ELR',
                     help='learning rate (default: 0.001)')
 parser.add_argument('--train_encoder', type=bool, default=True,
                     help='Whether the encoder requires training (default: False)')
-# parser.add_argument('--encoder_hidden', type=int, default=128,
-#                     help='hidden layer dimension of encoder (default: 128)')
 
 # Decoder args
 parser.add_argument('--decoder_lr', type=float, default=1e-4, metavar='DLR',
                     help='learning rate (default: 1e-3)')
-# parser.add_argument('--decoder_e_hidden', type=int, default=8,
-#                     help='decoder hidden size (default: 8)')
-# parser.add_argument('--decoder_d_hidden', type=int, default=16,
-#                     help='decoder hidden size (default: 16)')
-# parser.add_argument('--decoder_forward', type=int, default=32,
-#                     help='decoder feed forward size (default: 32)')
+
 
 # Output
 parser.add_argument('--save_model', action='store_true', default=True,
